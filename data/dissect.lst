@@ -57,9 +57,9 @@ data (
   fi
 
   if param1 == 0x0001; then
-    include block2(repeat=param1)
+    include block2[repeat=param1]
   else
-    include block3(repeat=10)
+    include block3[repeat=10]
   fi
 
   if block1.param0 == 0; then
