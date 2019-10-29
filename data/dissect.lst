@@ -1,0 +1,74 @@
+import (
+  "blocks.lst"
+  "funcs.lst"
+)
+
+# define "constants"
+# define (
+#
+# )
+
+# declare "parameter definition"
+# declare (
+#
+# )
+
+enum KO_OK (
+  0 = KO
+  1 = OK
+)
+
+enum ON_OFF (
+  0 = OFF
+  1 = ON
+)
+
+polynomial Eighty7 (
+  0 = 87
+  1 = 0.3
+  2 = -1.2
+)
+
+block block1 (
+  param0
+  param1
+  param2
+)
+
+block block2 (
+  param0
+  param1
+)
+
+block block3 (
+  param0
+  param1
+)
+
+data (
+  param0[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param1[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param2[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param3[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  include block1
+
+  if param0 == 0x1111; then
+    include block2
+  fi
+
+  if param1 == 0x0001; then
+    include block2(repeat=param1)
+  else
+    include block3(repeat=10)
+  fi
+
+  if block1.param0 == 0; then
+    include block2
+  else if block1.param0 == 1; then
+    include block3
+  else if block1.param0 == 2; then
+    param2
+  else
+    exit
+  fi
+)
