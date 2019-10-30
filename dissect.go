@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
+	"strconv"
 )
 
 func main() {
@@ -47,6 +48,64 @@ func parseFile(r io.Reader) error {
 	return Parse(r)
 }
 
+type Value interface{}
+
+type Field struct {
+	Name   string
+	Scope  string
+	Type   string
+	Order  string
+	Offset int
+	Repeat int
+	Size   int
+}
+
+func (f Field) Decode() ([]Value, error) {
+	if f.Repeat == 0 {
+		f.Repeat++
+	}
+	vs := make([]Value, f.Repeat)
+	for i := 0; i < f.Repeat; i++ {
+		vs[i] = nil
+	}
+	return vs, nil
+}
+
+type Block struct {
+	Name   string
+	Offset int
+	Repeat int
+	Fields []Field
+}
+
+func (b Block) Decode() ([]Value, error) {
+	if b.Repeat == 0 {
+		b.Repeat++
+	}
+	vs := make([]Value, 0, b.Repeat*len(b.Fields))
+	for i := 0; i < b.Repeat; i++ {
+		for _, f := range b.Fields {
+			xs, err := f.Decode()
+			if err != nil {
+				return nil, err
+			}
+			vs = append(vs, xs...)
+		}
+	}
+	return vs, nil
+}
+
+func (b Block) Len() int {
+	var size int
+	for _, f := range b.Fields {
+		size += f.Size
+	}
+	if b.Repeat > 0 {
+		size *= b.Repeat
+	}
+	return size
+}
+
 var keywords = []string{
 	"if",
 	"then",
@@ -73,6 +132,10 @@ type Parser struct {
 	peek Token
 
 	kwords map[string]func() error
+
+	vars   map[string]Token
+	blocks map[string]Block
+	fields map[string]Field
 }
 
 func Parse(r io.Reader) error {
@@ -80,7 +143,12 @@ func Parse(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	p := Parser{scan: scan}
+	p := Parser{
+		scan:   scan,
+		vars:   make(map[string]Token),
+		blocks: make(map[string]Block),
+		fields: make(map[string]Field),
+	}
 
 	p.kwords = map[string]func() error{
 		"data":       p.parseData,
@@ -99,13 +167,11 @@ func Parse(r io.Reader) error {
 }
 
 func (p *Parser) Parse() error {
-	p.skipToken(Comment)
-	p.skipToken(Newline)
+	p.skipComment()
 	if p.curr.Type == Keyword && p.curr.Literal == "import" {
 		if err := p.parseImport(); err != nil {
 			return err
 		}
-		p.skipToken(Newline)
 	}
 
 	for {
@@ -150,8 +216,18 @@ func (p *Parser) parseData() error {
 				err = fmt.Errorf("parseData: unexpected keyword %s", p.curr)
 			}
 		case Ident, Text:
-			fmt.Println(">> parseData (ident)", p.curr)
-			err = p.parseField()
+			peek := p.peek.Type
+			if peek == lsquare {
+				err = p.parseField()
+			} else if peek == Newline {
+				if _, ok := p.fields[p.curr.Literal]; !ok {
+					err = fmt.Errorf("parseData: %s not declared", p.curr.Literal)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				err = fmt.Errorf("parseData: unexpected token %s", p.curr)
+			}
 		default:
 			err = fmt.Errorf("parseData: unexpected token %s", p.curr)
 		}
@@ -161,6 +237,25 @@ func (p *Parser) parseData() error {
 	}
 	p.nextToken()
 	return nil
+}
+
+const (
+	bindLowest int = iota
+	bindOr
+	bindAnd
+	bindEq
+	bindRel
+)
+
+var bindings = map[rune]int{
+	Equal:   bindEq,
+	NotEq:   bindEq,
+	Lesser:  bindRel,
+	LessEq:  bindRel,
+	Greater: bindRel,
+	GreatEq: bindRel,
+	And:     bindAnd,
+	Or:      bindOr,
 }
 
 func (p *Parser) parseExpression() error {
@@ -180,7 +275,7 @@ func (p *Parser) parseIf() error {
 			break
 		}
 		if p.curr.Type == Keyword && p.curr.Literal == "if" {
-			p.nextToken()
+			// p.nextToken()
 			if err := p.parseExpression(); err != nil {
 				return err
 			}
@@ -219,7 +314,18 @@ func (p *Parser) parseBranch() error {
 				err = fmt.Errorf("parseBranch: unexpected keyword %s", p.curr)
 			}
 		case Ident, Text:
-			err = p.parseField()
+			peek := p.peek.Type
+			if peek == lsquare {
+				err = p.parseField()
+			} else if peek == Newline {
+				if _, ok := p.fields[p.curr.Literal]; !ok {
+					err = fmt.Errorf("parseBranch: %s not declared", p.curr.Literal)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				err = fmt.Errorf("parseBranch: unexpected token %s", p.curr)
+			}
 		}
 		if err != nil {
 			return err
@@ -246,9 +352,19 @@ func (p *Parser) parseField() error {
 	if !p.curr.isIdent() {
 		return fmt.Errorf("parseField: unexpected token %s", p.curr)
 	}
-	fmt.Println(">> parseField:", p.curr)
+	if _, ok := p.fields[p.curr.Literal]; ok {
+		return fmt.Errorf("parseField: %s already declared", p.curr.Literal)
+	}
+	f := Field{Name: p.curr.Literal}
+	p.fields[f.Name] = f
+
 	p.nextToken()
 	if p.curr.Type != lsquare {
+		return nil
+	}
+	if p.peek.Type == rsquare {
+		p.nextToken()
+		p.nextToken()
 		return nil
 	}
 	return p.parseProperties()
@@ -260,7 +376,6 @@ func (p *Parser) parseProperties() error {
 		if !p.curr.isIdent() {
 			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
-		key := p.curr.Literal
 		p.nextToken()
 		if p.curr.Type != equal {
 			return fmt.Errorf("parseProperties: expected =, got %s", p.curr)
@@ -273,7 +388,6 @@ func (p *Parser) parseProperties() error {
 		default:
 			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
-		fmt.Println("> parseProperties:", key, p.curr.Literal)
 		p.nextToken()
 		switch p.curr.Type {
 		case rsquare, comma:
@@ -297,6 +411,9 @@ func (p *Parser) parseDeclare() error {
 		if p.curr.Type == rparen {
 			break
 		}
+		if p.peek.Type != lsquare {
+			return fmt.Errorf("parseDeclare: expected [, got %s", p.curr)
+		}
 		if err := p.parseField(); err != nil {
 			return err
 		}
@@ -305,18 +422,20 @@ func (p *Parser) parseDeclare() error {
 	return nil
 }
 
-func (p *Parser) parseAssignment() error {
-	key := p.curr.Literal
+func (p *Parser) parseAssignment() (key, val Token, err error) {
+	key = p.curr
 	p.nextToken()
 	if p.curr.Type != equal {
-		return fmt.Errorf("parseAssignment: expected =, got %s", p.curr)
+		err = fmt.Errorf("parseAssignment: expected =, got %s", p.curr)
+		return
 	}
 	p.nextToken()
 	switch p.curr.Type {
 	case Integer, Float, Text, Ident:
-		fmt.Println(">> parseAssignment:", key, p.curr.Literal)
+		val = p.curr
 	default:
-		return fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+		err = fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+		return
 	}
 	p.nextToken()
 	switch p.curr.Type {
@@ -325,9 +444,9 @@ func (p *Parser) parseAssignment() error {
 	case Newline:
 		p.nextToken()
 	default:
-		return fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+		err = fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
 	}
-	return nil
+	return
 }
 
 func (p *Parser) parseDefine() error {
@@ -345,9 +464,14 @@ func (p *Parser) parseDefine() error {
 		if !p.curr.isIdent() {
 			return fmt.Errorf("parseDefine: unexpected token %s", p.curr)
 		}
-		if err := p.parseAssignment(); err != nil {
+		k, v, err := p.parseAssignment()
+		if err != nil {
 			return err
 		}
+		if _, ok := p.vars[k.Literal]; ok {
+			return fmt.Errorf("parseDefine: %s already defined", k.Literal)
+		}
+		p.vars[k.Literal] = v
 	}
 	p.nextToken()
 	return nil
@@ -368,7 +492,6 @@ func (p *Parser) parseImport() error {
 		if !p.curr.isIdent() {
 			return fmt.Errorf("parseImport: unexpected token %s", p.curr)
 		}
-		fmt.Println(">> parseImport:", p.curr)
 		p.nextToken()
 		switch p.curr.Type {
 		case Comment:
@@ -402,9 +525,19 @@ func (p *Parser) parseBlock() error {
 		if !p.curr.isIdent() {
 			return fmt.Errorf("parseBlock: unexpected token %s", p.curr)
 		}
-		fmt.Println(">> parseBlock:", p.curr)
-		if err := p.parseField(); err != nil {
-			return err
+		switch p.peek.Type {
+		case lsquare:
+			if err := p.parseField(); err != nil {
+				return err
+			}
+		case Newline:
+			_, ok := p.fields[p.curr.Literal]
+			if !ok {
+				return fmt.Errorf("parseBlock: %s not declared", p.curr.Literal)
+			}
+			p.nextToken()
+		default:
+			return fmt.Errorf("parseBlock: unexpected token %s", p.peek)
 		}
 	}
 	p.nextToken()
@@ -427,7 +560,7 @@ func (p *Parser) parsePair() error {
 		if p.curr.Type == rparen {
 			break
 		}
-		if err := p.parseAssignment(); err != nil {
+		if _, _, err := p.parseAssignment(); err != nil {
 			return err
 		}
 	}
@@ -471,6 +604,26 @@ type Token struct {
 	pos     Position
 }
 
+func (t Token) ValueOf() (v Value, e error) {
+	switch t.Type {
+	default:
+		v = t.Literal
+	case Integer:
+		if x, err := strconv.ParseInt(t.Literal, 0, 64); err == nil {
+			v = x
+		} else {
+			e = err
+		}
+	case Float:
+		if x, err := strconv.ParseFloat(t.Literal, 64); err == nil {
+			v = x
+		} else {
+			e = err
+		}
+	}
+	return
+}
+
 func (t Token) isIdent() bool {
 	return t.Type == Ident || t.Type == Text
 }
@@ -481,6 +634,10 @@ func (t Token) String() string {
 		lit = t.Literal
 	)
 	switch t.Type {
+	case And:
+		return "<and>"
+	case Or:
+		return "<or>"
 	case EOF:
 		return "<eof>"
 	case Ident:
@@ -532,6 +689,8 @@ const (
 	LessEq
 	Greater
 	GreatEq
+	And
+	Or
 	Newline
 	Illegal
 )
@@ -715,6 +874,11 @@ func (s *Scanner) scanIdent(tok *Token) {
 	ix := sort.SearchStrings(keywords, tok.Literal)
 	if ix < len(keywords) && keywords[ix] == tok.Literal {
 		tok.Type = Keyword
+	}
+	if tok.Literal == "and" {
+		tok.Type = And
+	} else if tok.Literal == "or" {
+		tok.Type = Or
 	}
 }
 
