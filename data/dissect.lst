@@ -1,26 +1,28 @@
+# a comment before import
 import (
   "blocks.lst"
   "funcs.lst"
 )
 
-# define "constants"
-# define (
-#
-# )
+# define constants
+define (
+  Version = 1
+  Nine = 9
+)
 
-# declare "parameter definition"
-# declare (
-#
-# )
+# declare parameters for blocks and data
+declare (
+  param0[size=32, type=u32]
+  param1[size=32, type=u32]
+  param2[size=32, type=u32]
+  param3[size=32, type=u32]
+  param4[size=32, type=u32]
+)
 
+# enum block are introduced with the keyword enum follow by an ident
 enum KO_OK (
   0 = KO
   1 = OK
-)
-
-enum ON_OFF (
-  0 = OFF
-  1 = ON
 )
 
 polynomial Eighty7 (
@@ -36,39 +38,32 @@ block block1 (
 )
 
 block block2 (
-  param0
-  param1
-)
-
-block block3 (
-  param0
-  param1
+  param3
+  param4
 )
 
 data (
-  param0[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
-  param1[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
-  param2[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
-  param3[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param0a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param1a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
   include block1
 
-  if param0 == 0x1111; then
+  if param0 == 1; then
     include block2
-  fi
-
-  if param1 == 0x0001; then
-    include block2[repeat=param1]
-  else
-    include block3[repeat=10]
-  fi
-
-  if block1.param0 == 0; then
-    include block2
-  else if block1.param0 == 1; then
+  else if param0 == 2; then
     include block3
-  else if block1.param0 == 2; then
-    param2
+    param3
+    param4
+    param5a[offset=16, repeat=2, type=i16]
   else
-    exit
+    include block4
+    include block5
+  fi
+
+  param5[]
+  param6[]
+  include block7
+
+  if param8 == 0; then
+    include block8
   fi
 )
