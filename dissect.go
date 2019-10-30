@@ -100,39 +100,27 @@ func Parse(r io.Reader) error {
 
 func (p *Parser) Parse() error {
 	p.skipToken(Comment)
+	p.skipToken(Newline)
 	if p.curr.Type == Keyword && p.curr.Literal == "import" {
 		if err := p.parseImport(); err != nil {
 			return err
 		}
-	}
-
-	var err error
-	for !p.isDone() {
 		p.skipToken(Newline)
-		switch p.curr.Type {
-		case Keyword:
-			if fn, ok := p.kwords[p.curr.Literal]; !ok {
-				err = fmt.Errorf("parse: unknown keyword: %s", p.curr.Literal)
-			} else {
-				err = fn()
-			}
-		case Comment:
-			p.skipToken(Comment)
-		default:
-			err = fmt.Errorf("parse: unexpected token: %s", p.curr)
+	}
+
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type != Keyword {
+			return fmt.Errorf("parse: unknown keyword: %s", p.curr.Literal)
 		}
-		if err != nil {
-			break
+		parse, ok := p.kwords[p.curr.Literal]
+		if !ok {
+			return fmt.Errorf("parse: unknown keyword: %s", p.curr.Literal)
+		}
+		if err := parse(); err != nil {
+			return err
 		}
 	}
-	return err
-}
-
-func (p *Parser) parseDeclare() error {
-	return nil
-}
-
-func (p *Parser) parseDefine() error {
 	return nil
 }
 
@@ -184,19 +172,35 @@ func (p *Parser) parseInclude() error {
 	}
 	fmt.Println(">> include", p.curr)
 	p.nextToken()
-	return nil
+	if p.curr.Type != lsquare {
+		return nil
+	}
+	p.nextToken()
+	return p.parseProperties()
+}
+
+func (p *Parser) parseField() error {
+	if !p.curr.isIdent() {
+		return fmt.Errorf("parseField: unexpected token %s", p.curr)
+	}
+	fmt.Println(">> parseField:", p.curr)
+	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil
+	}
+	return p.parseProperties()
 }
 
 func (p *Parser) parseProperties() error {
 	for p.curr.Type != rsquare {
 		p.nextToken()
-		if p.curr.Type != Ident {
+		if !p.curr.isIdent() {
 			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
 		key := p.curr.Literal
 		p.nextToken()
 		if p.curr.Type != equal {
-			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return fmt.Errorf("parseProperties: expected =, got %s", p.curr)
 		}
 		p.nextToken()
 		switch p.curr.Type {
@@ -215,90 +219,167 @@ func (p *Parser) parseProperties() error {
 		}
 	}
 	p.nextToken()
-	p.skipToken(Newline)
+	return nil
+}
+
+func (p *Parser) parseDeclare() error {
+	fmt.Println("parseDeclare:", p.curr)
+	p.nextToken()
+	if p.curr.Type != lparen {
+		return fmt.Errorf("parseDeclare: expected (, got %s", p.curr)
+	}
+	p.nextToken()
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		if err := p.parseField(); err != nil {
+			return err
+		}
+	}
+	p.nextToken()
+	return nil
+}
+
+func (p *Parser) parseAssignment() error {
+	key := p.curr.Literal
+	p.nextToken()
+	if p.curr.Type != equal {
+		return fmt.Errorf("parseAssignment: expected =, got %s", p.curr)
+	}
+	p.nextToken()
+	switch p.curr.Type {
+	case Integer, Float, Text, Ident:
+		fmt.Println(">> parseAssignment:", key, p.curr.Literal)
+	default:
+		return fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+	}
+	p.nextToken()
+	switch p.curr.Type {
+	case Comment:
+		p.skipComment()
+	case Newline:
+		p.nextToken()
+	default:
+		return fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+	}
+	return nil
+}
+
+func (p *Parser) parseDefine() error {
+	fmt.Println("parseDefine:", p.curr)
+	p.nextToken()
+	if p.curr.Type != lparen {
+		return fmt.Errorf("parseDefine: expected (, got %s", p.curr)
+	}
+	p.nextToken()
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		if !p.curr.isIdent() {
+			return fmt.Errorf("parseDefine: unexpected token %s", p.curr)
+		}
+		if err := p.parseAssignment(); err != nil {
+			return err
+		}
+	}
+	p.nextToken()
 	return nil
 }
 
 func (p *Parser) parseImport() error {
 	fmt.Println("parseImport:", p.curr)
 	p.nextToken()
+	if p.curr.Type != lparen {
+		return fmt.Errorf("parseImport: expected (, got %s", p.curr)
+	}
 	p.nextToken()
-	for p.curr.Type != rparen {
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		if !p.curr.isIdent() {
+			return fmt.Errorf("parseImport: unexpected token %s", p.curr)
+		}
+		fmt.Println(">> parseImport:", p.curr)
+		p.nextToken()
 		switch p.curr.Type {
+		case Comment:
+			p.skipComment()
 		case Newline:
-		case Ident, Text:
-			fmt.Println("import file:", p.curr.Literal)
+			p.nextToken()
 		default:
 			return fmt.Errorf("parseImport: unexpected token %s", p.curr)
 		}
-		p.nextToken()
 	}
 	p.nextToken()
-	p.skipToken(Newline)
 	return nil
 }
 
 func (p *Parser) parseBlock() error {
 	fmt.Println("parseBlock:", p.curr)
 	p.nextToken()
-	if typ := p.curr.Type; !(typ == Ident || typ == Text) {
+	if !p.curr.isIdent() {
 		return fmt.Errorf("parseBlock: unexpected token %s", p.curr)
 	}
-	fmt.Println("> parseBlock:", p.curr)
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return fmt.Errorf("parseBlock: unexpectToken %s", p.curr)
+		return fmt.Errorf("parseBlock: expected (, got %s", p.curr)
 	}
 	p.nextToken()
-	p.skipToken(Newline)
-	for p.curr.Type != rparen {
-		if !(p.curr.Type == Ident || p.curr.Type != Text) {
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		if !p.curr.isIdent() {
 			return fmt.Errorf("parseBlock: unexpected token %s", p.curr)
 		}
-		param := p.curr.Literal
-		p.nextToken()
-		fmt.Println(">> parseBlock", param)
-		p.skipToken(Newline)
+		fmt.Println(">> parseBlock:", p.curr)
+		if err := p.parseField(); err != nil {
+			return err
+		}
 	}
 	p.nextToken()
-	p.skipToken(Newline)
-
 	return nil
 }
 
 func (p *Parser) parsePair() error {
 	fmt.Println("parsePair:", p.curr)
 	p.nextToken()
-	if typ := p.curr.Type; !(typ == Ident || typ == Text) {
+	if !p.curr.isIdent() {
 		return fmt.Errorf("parsePair: unexpected token %s", p.curr)
 	}
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return fmt.Errorf("parsePair: unexpected token %s", p.curr)
+		return fmt.Errorf("parsePair: expected (, got %s", p.curr)
 	}
 	p.nextToken()
-	p.skipToken(Newline)
-	for p.curr.Type != rparen {
-		key := p.curr.Literal
-		p.nextToken()
-		if p.curr.Type != equal {
-			return fmt.Errorf("parsePair: unexpected token %s", p.curr)
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
 		}
-		p.nextToken()
-		fmt.Println("> parsePair:", key, p.curr.Literal)
-		if p.peek.Type != Newline {
-			return fmt.Errorf("parsePair: unexpected token %s", p.curr)
+		if err := p.parseAssignment(); err != nil {
+			return err
 		}
-		p.nextToken()
-		p.nextToken()
 	}
 	p.nextToken()
-	p.skipToken(Newline)
 	return nil
 }
 
 func (p *Parser) isDone() bool {
 	return p.curr.Type == EOF
+}
+
+func (p *Parser) skipComment() {
+	p.skipToken(Newline)
+	p.skipToken(Comment)
+	p.skipToken(Newline)
 }
 
 func (p *Parser) skipToken(typ rune) {
@@ -325,6 +406,10 @@ type Token struct {
 	Literal string
 	Type    rune
 	pos     Position
+}
+
+func (t Token) isIdent() bool {
+	return t.Type == Ident || t.Type == Text
 }
 
 func (t Token) String() string {
@@ -607,11 +692,9 @@ func (s *Scanner) scanComment(tok *Token) {
 	for s.char != newline {
 		s.readByte()
 	}
-	s.unreadByte()
+	// s.unreadByte()
 
-	if pos < s.pos {
-		tok.Literal = string(s.buffer[pos:s.pos])
-	}
+	tok.Literal = string(s.buffer[pos:s.pos])
 	tok.Type = Comment
 }
 
