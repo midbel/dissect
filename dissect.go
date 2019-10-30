@@ -108,10 +108,13 @@ func (p *Parser) Parse() error {
 		p.skipToken(Newline)
 	}
 
-	for !p.isDone() {
+	for {
 		p.skipComment()
+		if p.isDone() {
+			break
+		}
 		if p.curr.Type != Keyword {
-			return fmt.Errorf("parse: unknown keyword: %s", p.curr.Literal)
+			return fmt.Errorf("parse: unexpected token: %s", p.curr)
 		}
 		parse, ok := p.kwords[p.curr.Literal]
 		if !ok {
@@ -128,40 +131,100 @@ func (p *Parser) parseData() error {
 	fmt.Println("parseData", p.curr)
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return fmt.Errorf("parseData: unexpected token %s", p.curr)
+		return fmt.Errorf("parseData: expected (, got %s", p.curr)
 	}
 	p.nextToken()
-	p.skipToken(Newline)
-	for p.curr.Type != rparen {
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		var err error
 		switch p.curr.Type {
-		case Comment:
-			p.skipToken(Comment)
 		case Keyword:
 			if lit := p.curr.Literal; lit == "include" {
-				if err := p.parseInclude(); err != nil {
-					return err
-				}
+				err = p.parseInclude()
 			} else if lit == "if" {
-
+				err = p.parseIf()
 			} else {
-				return fmt.Errorf("parseData: unexpected keyword %s", p.curr)
+				err = fmt.Errorf("parseData: unexpected keyword %s", p.curr)
 			}
 		case Ident, Text:
 			fmt.Println(">> parseData (ident)", p.curr)
-			p.nextToken()
-			if p.curr.Type == lsquare {
-				if err := p.parseProperties(); err != nil {
-					return err
-				}
-			}
+			err = p.parseField()
 		default:
-			return fmt.Errorf("parseData: unexpected token %s", p.curr)
+			err = fmt.Errorf("parseData: unexpected token %s", p.curr)
 		}
-		p.skipToken(Comment)
-		p.skipToken(Newline)
+		if err != nil {
+			return err
+		}
 	}
 	p.nextToken()
-	p.skipToken(Newline)
+	return nil
+}
+
+func (p *Parser) parseExpression() error {
+	for {
+		p.nextToken()
+		if p.curr.Type == semicolon {
+			break
+		}
+	}
+	return nil
+}
+
+func (p *Parser) parseIf() error {
+	fmt.Println("parseIf:", p.curr)
+	for !p.isDone() {
+		if p.curr.Type == Keyword && p.curr.Literal == "fi" {
+			break
+		}
+		if p.curr.Type == Keyword && p.curr.Literal == "if" {
+			p.nextToken()
+			if err := p.parseExpression(); err != nil {
+				return err
+			}
+			p.nextToken()
+			if p.curr.Type != Keyword && p.curr.Literal != "then" {
+				return fmt.Errorf("parseIf: expected then, got %s", p.curr)
+			}
+		}
+		p.nextToken()
+		if err := p.parseBranch(); err != nil {
+			return err
+		}
+	}
+	p.nextToken()
+	return nil
+}
+
+func (p *Parser) parseBranch() error {
+	fmt.Println("parseBranch:", p.curr)
+	for {
+		p.skipComment()
+		if p.curr.Type == Keyword && (p.curr.Literal == "else" || p.curr.Literal == "fi") {
+			if p.curr.Literal == "else" {
+				p.nextToken()
+			}
+			break
+		}
+		var err error
+		switch p.curr.Type {
+		default:
+			err = fmt.Errorf("parseBranch: unexpected token %s", p.curr)
+		case Keyword:
+			if p.curr.Literal == "include" {
+				err = p.parseInclude()
+			} else {
+				err = fmt.Errorf("parseBranch: unexpected keyword %s", p.curr)
+			}
+		case Ident, Text:
+			err = p.parseField()
+		}
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
