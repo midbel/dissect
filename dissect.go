@@ -48,64 +48,6 @@ func parseFile(r io.Reader) error {
 	return Parse(r)
 }
 
-type Value interface{}
-
-type Field struct {
-	Name   string
-	Scope  string
-	Type   string
-	Order  string
-	Offset int
-	Repeat int
-	Size   int
-}
-
-func (f Field) Decode() ([]Value, error) {
-	if f.Repeat == 0 {
-		f.Repeat++
-	}
-	vs := make([]Value, f.Repeat)
-	for i := 0; i < f.Repeat; i++ {
-		vs[i] = nil
-	}
-	return vs, nil
-}
-
-type Block struct {
-	Name   string
-	Offset int
-	Repeat int
-	Fields []Field
-}
-
-func (b Block) Decode() ([]Value, error) {
-	if b.Repeat == 0 {
-		b.Repeat++
-	}
-	vs := make([]Value, 0, b.Repeat*len(b.Fields))
-	for i := 0; i < b.Repeat; i++ {
-		for _, f := range b.Fields {
-			xs, err := f.Decode()
-			if err != nil {
-				return nil, err
-			}
-			vs = append(vs, xs...)
-		}
-	}
-	return vs, nil
-}
-
-func (b Block) Len() int {
-	var size int
-	for _, f := range b.Fields {
-		size += f.Size
-	}
-	if b.Repeat > 0 {
-		size *= b.Repeat
-	}
-	return size
-}
-
 var keywords = []string{
 	"if",
 	"then",
