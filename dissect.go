@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"sort"
-	"strconv"
 )
 
 func main() {
@@ -147,11 +146,7 @@ func (p *Parser) parseData() error {
 			if peek == lsquare {
 				err = p.parseField()
 			} else if peek == Newline {
-				if _, ok := p.fields[p.curr.Literal]; !ok {
-					err = fmt.Errorf("parseData: %s not declared", p.curr.Literal)
-				} else {
-					p.nextToken()
-				}
+
 			} else {
 				err = fmt.Errorf("parseData: unexpected token %s", p.curr)
 			}
@@ -197,7 +192,7 @@ func (p *Parser) parseExpression() error {
 
 func (p *Parser) parseInclude() error {
 	p.nextToken()
-	if !(p.curr.Type == Ident || p.curr.Type == Text) {
+	if !p.curr.isIdent() {
 		return fmt.Errorf("parseInclude: unexpected token %s", p.curr)
 	}
 	fmt.Println(">> include", p.curr)
@@ -213,11 +208,6 @@ func (p *Parser) parseField() error {
 	if !p.curr.isIdent() {
 		return fmt.Errorf("parseField: unexpected token %s", p.curr)
 	}
-	if _, ok := p.fields[p.curr.Literal]; ok {
-		return fmt.Errorf("parseField: %s already declared", p.curr.Literal)
-	}
-	f := Field{Name: p.curr.Literal}
-	p.fields[f.Name] = f
 
 	p.nextToken()
 	if p.curr.Type != lsquare {
@@ -246,6 +236,7 @@ func (p *Parser) parseProperties() error {
 		case Ident:
 		case Text:
 		case Integer:
+		case Bool:
 		default:
 			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
@@ -325,14 +316,10 @@ func (p *Parser) parseDefine() error {
 		if !p.curr.isIdent() {
 			return fmt.Errorf("parseDefine: unexpected token %s", p.curr)
 		}
-		k, v, err := p.parseAssignment()
+		_, _, err := p.parseAssignment()
 		if err != nil {
 			return err
 		}
-		if _, ok := p.vars[k.Literal]; ok {
-			return fmt.Errorf("parseDefine: %s already defined", k.Literal)
-		}
-		p.vars[k.Literal] = v
 	}
 	p.nextToken()
 	return nil
@@ -392,10 +379,6 @@ func (p *Parser) parseBlock() error {
 				return err
 			}
 		case Newline:
-			_, ok := p.fields[p.curr.Literal]
-			if !ok {
-				return fmt.Errorf("parseBlock: %s not declared", p.curr.Literal)
-			}
 			p.nextToken()
 		default:
 			return fmt.Errorf("parseBlock: unexpected token %s", p.peek)
@@ -465,26 +448,6 @@ type Token struct {
 	pos     Position
 }
 
-func (t Token) ValueOf() (v Value, e error) {
-	switch t.Type {
-	default:
-		v = t.Literal
-	case Integer:
-		if x, err := strconv.ParseInt(t.Literal, 0, 64); err == nil {
-			v = x
-		} else {
-			e = err
-		}
-	case Float:
-		if x, err := strconv.ParseFloat(t.Literal, 64); err == nil {
-			v = x
-		} else {
-			e = err
-		}
-	}
-	return
-}
-
 func (t Token) isIdent() bool {
 	return t.Type == Ident || t.Type == Text
 }
@@ -511,6 +474,8 @@ func (t Token) String() string {
 		str = "integer"
 	case Float:
 		str = "float"
+	case Bool:
+		str = "bool"
 	case Comment:
 		str = "comment"
 	case Equal:
@@ -543,6 +508,7 @@ const (
 	Keyword
 	Integer
 	Float
+	Bool
 	Comment
 	Equal
 	NotEq
@@ -731,6 +697,11 @@ func (s *Scanner) scanIdent(tok *Token) {
 	tok.Type = Ident
 
 	s.unreadByte()
+
+	if tok.Literal == "true" || tok.Literal == "false" {
+		tok.Type = Bool
+		return
+	}
 
 	ix := sort.SearchStrings(keywords, tok.Literal)
 	if ix < len(keywords) && keywords[ix] == tok.Literal {
