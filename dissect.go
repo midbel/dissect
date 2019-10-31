@@ -49,10 +49,6 @@ func parseFile(r io.Reader) error {
 }
 
 var keywords = []string{
-	"if",
-	"then",
-	"else",
-	"fi",
 	"and",
 	"or",
 	"enum",
@@ -74,10 +70,6 @@ type Parser struct {
 	peek Token
 
 	kwords map[string]func() error
-
-	vars   map[string]Token
-	blocks map[string]Block
-	fields map[string]Field
 }
 
 func Parse(r io.Reader) error {
@@ -85,12 +77,7 @@ func Parse(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	p := Parser{
-		scan:   scan,
-		vars:   make(map[string]Token),
-		blocks: make(map[string]Block),
-		fields: make(map[string]Field),
-	}
+	p := Parser{scan: scan}
 
 	p.kwords = map[string]func() error{
 		"data":       p.parseData,
@@ -152,8 +139,6 @@ func (p *Parser) parseData() error {
 		case Keyword:
 			if lit := p.curr.Literal; lit == "include" {
 				err = p.parseInclude()
-			} else if lit == "if" {
-				err = p.parseIf()
 			} else {
 				err = fmt.Errorf("parseData: unexpected keyword %s", p.curr)
 			}
@@ -205,72 +190,6 @@ func (p *Parser) parseExpression() error {
 		p.nextToken()
 		if p.curr.Type == semicolon {
 			break
-		}
-	}
-	return nil
-}
-
-func (p *Parser) parseIf() error {
-	fmt.Println("parseIf:", p.curr)
-	for !p.isDone() {
-		if p.curr.Type == Keyword && p.curr.Literal == "fi" {
-			break
-		}
-		if p.curr.Type == Keyword && p.curr.Literal == "if" {
-			// p.nextToken()
-			if err := p.parseExpression(); err != nil {
-				return err
-			}
-			p.nextToken()
-			if p.curr.Type != Keyword && p.curr.Literal != "then" {
-				return fmt.Errorf("parseIf: expected then, got %s", p.curr)
-			}
-		}
-		p.nextToken()
-		if err := p.parseBranch(); err != nil {
-			return err
-		}
-	}
-	p.nextToken()
-	return nil
-}
-
-func (p *Parser) parseBranch() error {
-	fmt.Println("parseBranch:", p.curr)
-	for {
-		p.skipComment()
-		if p.curr.Type == Keyword && (p.curr.Literal == "else" || p.curr.Literal == "fi") {
-			if p.curr.Literal == "else" {
-				p.nextToken()
-			}
-			break
-		}
-		var err error
-		switch p.curr.Type {
-		default:
-			err = fmt.Errorf("parseBranch: unexpected token %s", p.curr)
-		case Keyword:
-			if p.curr.Literal == "include" {
-				err = p.parseInclude()
-			} else {
-				err = fmt.Errorf("parseBranch: unexpected keyword %s", p.curr)
-			}
-		case Ident, Text:
-			peek := p.peek.Type
-			if peek == lsquare {
-				err = p.parseField()
-			} else if peek == Newline {
-				if _, ok := p.fields[p.curr.Literal]; !ok {
-					err = fmt.Errorf("parseBranch: %s not declared", p.curr.Literal)
-				} else {
-					p.nextToken()
-				}
-			} else {
-				err = fmt.Errorf("parseBranch: unexpected token %s", p.curr)
-			}
-		}
-		if err != nil {
-			return err
 		}
 	}
 	return nil

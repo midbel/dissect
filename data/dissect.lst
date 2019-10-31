@@ -47,23 +47,8 @@ data (
   param1a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
   include block1
 
-  if param0 == 1; then
-    include block2
-  else if param0 == 2; then
-    include block3
-    param3
-    param4
-    param5a[offset=16, repeat=2, type=i16]
-  else
-    include block4
-    include block5
-  fi
 
   param5[]
   param6[]
   include block7
-
-  if param8 == 0; then
-    include block8
-  fi
 )
