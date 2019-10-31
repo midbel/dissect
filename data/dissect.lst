@@ -16,7 +16,16 @@ declare (
   param1[size=32, type=u32]
   param2[size=32, type=u32]
   param3[size=32, type=u32]
-  param4[size=32, type=u32]
+
+  integer4[size=32, type=i32]
+  integer5[size=32, type=i32]
+  integer6[size=32, type=i32]
+
+  float7[size=32, type=f32]
+  float8[size=32, type=f32]
+  float9[size=32, type=f32]
+
+  boolean0[size=32]
 )
 
 # enum block are introduced with the keyword enum follow by an ident
@@ -31,36 +40,59 @@ polynomial Eighty7 (
   2 = -1.2
 )
 
-block block1 (
+block param (
   param0
   param1
   param2
+  param3
 )
 
-block block2 (
-  param3
-  param4
+block int1 (
+  integer4
+  integer5
+)
+
+block int2 (
+  integer5
+  integer6
+)
+
+block float1 (
+ float7
+ float8
+)
+
+block float2 (
+ float7
+ float8
+)
+
+block misc1 (
+  param0
+  integer4
+  float7
+  boolean0
 )
 
 data (
-  param0a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
-  param1a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  ident0[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  ident1[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
   param0
-  include block1
+  include param
 
-  include[predicate] block1
+  include[predicate] param
   include[predicate] (
-    block2
+    include int1
     param2
-    include block4
+    include int2
     include[predicate] (
-      param5
-      param6
-      include block9
+      int5
+      int6
+      include misc1
     )
   )
 
-  param5[]
-  param6[]
-  include block7
+  ident5[type=i8]
+  ident6[type=i8]
+  include float2
 )
