@@ -47,6 +47,11 @@ data (
   param1a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
   include block1
 
+  include[predicate] block1
+  include[predicate] (
+    block2
+    param2
+  )
 
   param5[]
   param6[]

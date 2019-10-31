@@ -238,7 +238,6 @@ func (s *Scanner) scanComment(tok *Token) {
 	for s.char != newline {
 		s.readByte()
 	}
-	// s.unreadByte()
 
 	tok.Literal = string(s.buffer[pos:s.pos])
 	tok.Type = Comment

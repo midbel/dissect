@@ -5,6 +5,25 @@ import (
 	"io"
 )
 
+const (
+	bindLowest int = iota
+	bindOr
+	bindAnd
+	bindEq
+	bindRel
+)
+
+var bindings = map[rune]int{
+	Equal:   bindEq,
+	NotEq:   bindEq,
+	Lesser:  bindRel,
+	LessEq:  bindRel,
+	Greater: bindRel,
+	GreatEq: bindRel,
+	And:     bindAnd,
+	Or:      bindOr,
+}
+
 type Parser struct {
 	scan *Scanner
 
@@ -64,11 +83,9 @@ func (p *Parser) Parse() error {
 	return nil
 }
 
-func (p *Parser) parseData() error {
-	fmt.Println("parseData", p.curr)
-	p.nextToken()
+func (p *Parser) parseStatements() error {
 	if p.curr.Type != lparen {
-		return fmt.Errorf("parseData: expected (, got %s", p.curr)
+		return fmt.Errorf("parseStatements: expected (, got %s", p.curr)
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -82,19 +99,19 @@ func (p *Parser) parseData() error {
 			if lit := p.curr.Literal; lit == "include" {
 				err = p.parseInclude()
 			} else {
-				err = fmt.Errorf("parseData: unexpected keyword %s", p.curr)
+				err = fmt.Errorf("parseStatements: unexpected keyword %s", p.curr)
 			}
 		case Ident, Text:
 			peek := p.peek.Type
 			if peek == lsquare {
 				err = p.parseField()
 			} else if peek == Newline {
-
+				p.nextToken()
 			} else {
-				err = fmt.Errorf("parseData: unexpected token %s", p.curr)
+				err = fmt.Errorf("parseStatements: unexpected token %s", p.curr)
 			}
 		default:
-			err = fmt.Errorf("parseData: unexpected token %s", p.curr)
+			err = fmt.Errorf("parseStatements: unexpected token %s", p.curr)
 		}
 		if err != nil {
 			return err
@@ -104,47 +121,49 @@ func (p *Parser) parseData() error {
 	return nil
 }
 
-const (
-	bindLowest int = iota
-	bindOr
-	bindAnd
-	bindEq
-	bindRel
-)
+func (p *Parser) parseData() error {
+	fmt.Println("parseData", p.curr)
+	p.nextToken()
 
-var bindings = map[rune]int{
-	Equal:   bindEq,
-	NotEq:   bindEq,
-	Lesser:  bindRel,
-	LessEq:  bindRel,
-	Greater: bindRel,
-	GreatEq: bindRel,
-	And:     bindAnd,
-	Or:      bindOr,
+	return p.parseStatements()
 }
 
 func (p *Parser) parseExpression() error {
-	for {
-		p.nextToken()
+	fmt.Println("parseExpression:", p.curr)
+	p.nextToken()
+	for !p.isDone() {
+		fmt.Println("parseExpression", p.curr)
 		if p.curr.Type == rsquare {
 			break
 		}
+		p.nextToken()
 	}
+	p.nextToken()
 	return nil
 }
 
 func (p *Parser) parseInclude() error {
+	fmt.Println("parseInclude:", p.curr)
 	p.nextToken()
-	if !p.curr.isIdent() {
-		return fmt.Errorf("parseInclude: unexpected token %s", p.curr)
-	}
 	fmt.Println(">> include", p.curr)
-	p.nextToken()
-	if p.curr.Type != lsquare {
-		return nil
+	if p.curr.Type == lsquare {
+		if err := p.parseExpression(); err != nil {
+			return err
+		}
 	}
-	p.nextToken()
-	return p.parseProperties()
+	var err error
+	switch p.curr.Type {
+	case Ident, Text:
+
+	case lparen:
+		err = p.parseStatements()
+	default:
+		err = fmt.Errorf("parseInclude: unexpected token %s", p.curr)
+	}
+	if err == nil {
+		p.nextToken()
+	}
+	return err
 }
 
 func (p *Parser) parseField() error {
