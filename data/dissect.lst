@@ -45,6 +45,7 @@ block block2 (
 data (
   param0a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
   param1a[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  param0
   include block1
 
   include[predicate] block1

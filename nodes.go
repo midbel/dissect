@@ -1,5 +1,9 @@
 package dissect
 
+import (
+	"fmt"
+)
+
 type Node interface {
 	Pos() Position
 }
@@ -60,6 +64,90 @@ func (b Block) Pos() Position {
 
 func (b Block) isData() bool {
 	return b.id.Type == Keyword && b.id.Literal == kwData
+}
+
+func (b Block) Merge() (Node, error) {
+	for _, n := range b.nodes {
+		bck, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		if bck.isData() {
+			return traverse(bck, b)
+		}
+	}
+	return nil, fmt.Errorf("data block not found")
+}
+
+func (b Block) findParam(str string) (Parameter, error) {
+	for _, n := range b.nodes {
+		bck, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		if bck.id.Literal == kwDeclare && bck.id.Type == Keyword {
+			return bck.findParameter(str)
+		}
+	}
+	return Parameter{}, fmt.Errorf("%s: parameter not declared", str)
+}
+
+func (b Block) findBlock(str string) (Block, error) {
+	for _, n := range b.nodes {
+		bck, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		if bck.id.Literal == str {
+			return bck, nil
+		}
+	}
+	return Block{}, fmt.Errorf("%s: block not declared", str)
+}
+
+func (b Block) findParameter(str string) (Parameter, error) {
+	for _, n := range b.nodes {
+		p, ok := n.(Parameter)
+		if !ok {
+			continue
+		}
+		if p.id.Literal == str {
+			return p, nil
+		}
+	}
+	return Parameter{}, fmt.Errorf("%s: parameter not declared", str)
+}
+
+func traverse(dat Block, root Block) (Node, error) {
+	for i, n := range dat.nodes {
+		switch n := n.(type) {
+		case Parameter:
+			// do nothing every thing is fine for now
+		case Reference:
+			p, err := root.findParam(n.id.Literal)
+			if err == nil {
+				dat.nodes[i] = p
+			}
+		case Include:
+			dat.nodes[i], _ = traverseInclude(n, root)
+		}
+	}
+	return dat, nil
+}
+
+func traverseInclude(i Include, root Block) (Node, error) {
+	switch n := i.node.(type) {
+	case Reference:
+		b, err := root.findBlock(n.id.Literal)
+		if err == nil {
+			i.node = b
+		}
+	case Block:
+		i.node, _ = traverse(n, root)
+	default:
+		return i, fmt.Errorf("unexpected node type %T", i.node)
+	}
+	return i, nil
 }
 
 type Parameter struct {
