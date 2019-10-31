@@ -12,6 +12,12 @@ type Expression interface {
 	Eval(Set) bool
 }
 
+type empty struct{}
+
+func (e empty) Eval(_ Set) bool {
+	return true
+}
+
 type Value interface{}
 
 type Set struct {
@@ -119,19 +125,30 @@ func (b Block) findParameter(str string) (Parameter, error) {
 }
 
 func traverse(dat Block, root Block) (Node, error) {
+	nodes := make([]Node, 0, len(dat.nodes))
 	for i, n := range dat.nodes {
 		switch n := n.(type) {
 		case Parameter:
 			// do nothing every thing is fine for now
+			// should update properties
+			nodes = append(nodes, n)
 		case Reference:
 			p, err := root.findParam(n.id.Literal)
 			if err == nil {
-				dat.nodes[i] = p
+				nodes = append(nodes, p)
 			}
 		case Include:
-			dat.nodes[i], _ = traverseInclude(n, root)
+			x, _ := traverseInclude(n, root)
+			if n, ok := x.(Block); ok {
+				nodes = append(nodes, n.nodes...)
+			} else {
+				nodes = append(nodes, x)
+			}
+		case Block:
+			dat.nodes[i], _ = traverse(n, root)
 		}
 	}
+	dat.nodes = nodes
 	return dat, nil
 }
 
@@ -140,12 +157,15 @@ func traverseInclude(i Include, root Block) (Node, error) {
 	case Reference:
 		b, err := root.findBlock(n.id.Literal)
 		if err == nil {
-			i.node = b
+			i.node, _ = traverse(b, root)
 		}
 	case Block:
 		i.node, _ = traverse(n, root)
 	default:
 		return i, fmt.Errorf("unexpected node type %T", i.node)
+	}
+	if i.Predicate == nil {
+		return i.node, nil
 	}
 	return i, nil
 }

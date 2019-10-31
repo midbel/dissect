@@ -148,7 +148,7 @@ func (p *Parser) parseData() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseExpression() error {
+func (p *Parser) parseExpression() (Expression, error) {
 	p.nextToken()
 	for !p.isDone() {
 		if p.curr.Type == rsquare {
@@ -157,7 +157,7 @@ func (p *Parser) parseExpression() error {
 		p.nextToken()
 	}
 	p.nextToken()
-	return nil
+	return empty{}, nil
 }
 
 func (p *Parser) parseInclude() (Node, error) {
@@ -165,10 +165,11 @@ func (p *Parser) parseInclude() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type == lsquare {
-		if err := p.parseExpression(); err != nil {
+		expr, err := p.parseExpression()
+		if err != nil {
 			return nil, err
 		}
-		// i.Predicate = expr
+		i.Predicate = expr
 	}
 	var err error
 	switch p.curr.Type {
@@ -375,21 +376,14 @@ func (p *Parser) parseBlock() (Node, error) {
 		if !p.curr.isIdent() {
 			return nil, fmt.Errorf("parseBlock: unexpected token %s", p.curr)
 		}
-		switch p.peek.Type {
-		case lsquare:
-			n, err := p.parseField()
-			if err != nil {
-				return nil, err
-			}
-			b.nodes = append(b.nodes, n)
-		case Newline:
-			p.nextToken()
-		default:
-			return nil, fmt.Errorf("parseBlock: unexpected token %s", p.peek)
+		n, err := p.parseField()
+		if err != nil {
+			return nil, err
 		}
+		b.nodes = append(b.nodes, n)
 	}
 	p.nextToken()
-	return nil, nil
+	return b, nil
 }
 
 func (p *Parser) parsePair() (Node, error) {
