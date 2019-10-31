@@ -1,4 +1,4 @@
-package main
+package dissect
 
 type Node interface {
 	Pos() Position
