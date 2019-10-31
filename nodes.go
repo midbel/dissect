@@ -24,6 +24,33 @@ type Set struct {
 	values map[string]Value
 }
 
+type Parameter struct {
+	id    Token
+	props map[Token]Token
+}
+
+func (p Parameter) Pos() Position {
+	return p.id.pos
+}
+
+type Reference struct {
+	id Token
+}
+
+func (r Reference) Pos() Position {
+	return r.id.pos
+}
+
+type Include struct {
+	pos       Position
+	Predicate Expression
+	node      Node
+}
+
+func (i Include) Pos() Position {
+	return i.pos
+}
+
 type Constant struct {
 	id    Token
 	value Token
@@ -56,16 +83,16 @@ func (b Block) String() string {
 	return b.id.Literal
 }
 
+func (b Block) Pos() Position {
+	return b.id.pos
+}
+
 func (b Block) blockName() string {
 	if b.id.Type == Keyword {
 		return b.id.Literal
 	} else {
 		return kwBlock
 	}
-}
-
-func (b Block) Pos() Position {
-	return b.id.pos
 }
 
 func (b Block) isData() bool {
@@ -129,16 +156,18 @@ func traverse(dat Block, root Block) (Node, error) {
 	for i, n := range dat.nodes {
 		switch n := n.(type) {
 		case Parameter:
-			// do nothing every thing is fine for now
-			// should update properties
 			nodes = append(nodes, n)
 		case Reference:
 			p, err := root.findParam(n.id.Literal)
-			if err == nil {
-				nodes = append(nodes, p)
+			if err != nil {
+				return nil, err
 			}
+			nodes = append(nodes, p)
 		case Include:
-			x, _ := traverseInclude(n, root)
+			x, err := traverseInclude(n, root)
+			if err != nil {
+				return nil, err
+			}
 			if n, ok := x.(Block); ok {
 				nodes = append(nodes, n.nodes...)
 			} else {
@@ -156,43 +185,25 @@ func traverseInclude(i Include, root Block) (Node, error) {
 	switch n := i.node.(type) {
 	case Reference:
 		b, err := root.findBlock(n.id.Literal)
-		if err == nil {
-			i.node, _ = traverse(b, root)
+		if err != nil {
+			return nil, err
+		}
+		i.node, err = traverse(b, root)
+		if err != nil {
+			return nil, err
 		}
 	case Block:
-		i.node, _ = traverse(n, root)
+		x, err := traverse(n, root)
+		if err != nil {
+			return nil, err
+		}
+		i.node = x
 	default:
 		return i, fmt.Errorf("unexpected node type %T", i.node)
 	}
+	node := i
 	if i.Predicate == nil {
-		return i.node, nil
+		node = i.node
 	}
-	return i, nil
-}
-
-type Parameter struct {
-	id    Token
-	props map[Token]Token
-}
-
-func (p Parameter) Pos() Position {
-	return p.id.pos
-}
-
-type Reference struct {
-	id Token
-}
-
-func (r Reference) Pos() Position {
-	return r.id.pos
-}
-
-type Include struct {
-	pos       Position
-	Predicate Expression
-	node      Node
-}
-
-func (i Include) Pos() Position {
-	return i.pos
+	return node, nil
 }

@@ -12,7 +12,7 @@ define (
 
 # declare parameters for blocks and data
 declare (
-  param0[size=32, type=u32]
+  param0[size=32, type=u32, offset=Nine, expect=Version]
   param1[size=32, type=u32]
   param2[size=32, type=u32]
   param3[size=32, type=u32]
@@ -65,6 +65,7 @@ block float1 (
 block float2 (
  float7
  float8
+ float10[type=f32]
 )
 
 block misc1 (
@@ -86,8 +87,8 @@ data (
     param2
     include int2
     include[predicate] (
-      int5
-      int6
+      integer5
+      integer6
       include misc1
     )
   )

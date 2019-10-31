@@ -19,20 +19,17 @@ func main() {
 	}
 	defer r.Close()
 
-	n, err := dissect.Parse(r)
+	var n dissect.Node
+	if *merge {
+		n, err = dissect.Merge(r)
+	} else {
+		n, err = dissect.Parse(r)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(23)
+		os.Exit(25)
 	}
-	if *merge {
-		n, err = dissect.Merge(n)
-		if err != nil {
-			fmt.Fprintln(os.Stderr)
-			os.Exit(25)
-		}
-	}
-	err = dissect.Dump(n)
-	if err != nil {
+	if err = dissect.Dump(n); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(23)
 	}

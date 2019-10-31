@@ -56,7 +56,11 @@ func Parse(r io.Reader) (Node, error) {
 	return p.Parse()
 }
 
-func Merge(n Node) (Node, error) {
+func Merge(r io.Reader) (Node, error) {
+	n, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
 	root, ok := n.(Block)
 	if !ok {
 		return nil, fmt.Errorf("root node should be a Block!")
