@@ -5,13 +5,22 @@ type Node interface {
 }
 
 type Expression interface {
-  Eval(Set) bool
+	Eval(Set) bool
 }
 
 type Value interface{}
 
 type Set struct {
-  values map[string]Value
+	values map[string]Value
+}
+
+type Constant struct {
+	id    Token
+	value Token
+}
+
+func (c Constant) Pos() Position {
+	return c.id.pos
 }
 
 type Block struct {

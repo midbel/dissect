@@ -38,7 +38,7 @@ func scanFile(r io.Reader) error {
 		return err
 	}
 	for tok := s.Scan(); tok.Type != EOF; tok = s.Scan() {
-		fmt.Println(tok)
+		fmt.Printf("<%s> %s\n", tok.pos, tok)
 	}
 	return nil
 }
@@ -48,14 +48,11 @@ func parseFile(r io.Reader) error {
 }
 
 var keywords = []string{
-	"and",
-	"or",
 	"enum",
 	"polynomial",
 	"pointpair",
 	"block",
 	"import",
-	"exit",
 	"include",
 	"data",
 	"declare",
@@ -183,7 +180,7 @@ var bindings = map[rune]int{
 func (p *Parser) parseExpression() error {
 	for {
 		p.nextToken()
-		if p.curr.Type == semicolon {
+		if p.curr.Type == rparen {
 			break
 		}
 	}
@@ -438,6 +435,10 @@ type Position struct {
 	Column int
 }
 
+func (p Position) IsValid() bool {
+	return p.Line > 0
+}
+
 func (p Position) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
@@ -532,7 +533,6 @@ const (
 	comma      = ','
 	colon      = ':'
 	equal      = '='
-	semicolon  = ';'
 	newline    = '\n'
 	minus      = '-'
 	underscore = '_'
@@ -542,6 +542,8 @@ const (
 	langle     = '<'
 	rangle     = '>'
 	quote      = '"'
+	ampersand  = '&'
+	pipe       = '|'
 )
 
 type Scanner struct {
@@ -552,6 +554,7 @@ type Scanner struct {
 
 	line   int
 	column int
+	seen   int
 }
 
 func Scan(r io.Reader) (*Scanner, error) {
@@ -568,6 +571,8 @@ func (s *Scanner) Reset(r io.Reader) error {
 	buf, err := ioutil.ReadAll(r)
 	if err == nil {
 		s.buffer = bytes.ReplaceAll(buf, []byte("\r\n"), []byte("\n"))
+		s.line = 1
+		s.column = 0
 		s.readByte()
 	}
 	return err
@@ -582,6 +587,10 @@ func (s *Scanner) Scan() Token {
 
 	s.skipBlank()
 
+	tok.pos = Position{
+		Line:   s.line,
+		Column: s.column,
+	}
 	switch {
 	case isLetter(s.char):
 		s.scanIdent(&tok)
@@ -594,7 +603,6 @@ func (s *Scanner) Scan() Token {
 	case s.char == quote:
 		s.scanText(&tok)
 	case s.char == newline:
-		// s.skipNewline()
 		tok.Type = Newline
 	default:
 		tok.Type = rune(s.char)
@@ -610,14 +618,27 @@ func (s *Scanner) readByte() {
 		s.char = 0
 		return
 	}
+	if char := s.buffer[s.pos]; char == newline {
+		s.seen = s.column
+		s.line++
+		s.column = 0
+	}
 	s.char = s.buffer[s.next]
 	s.pos = s.next
 	s.next++
+
+	s.column++
 }
 
 func (s *Scanner) unreadByte() {
 	s.next = s.pos
 	s.pos--
+	if char := s.buffer[s.pos]; char == newline {
+		s.line--
+		s.column = s.seen
+	} else {
+		s.column--
+	}
 }
 
 func (s *Scanner) peekByte() byte {
@@ -646,7 +667,7 @@ func (s *Scanner) scanNumber(tok *Token) {
 
 			accept = isHexa
 			nodot = true
-		case dot, newline, semicolon, comma, rparen, space, tab:
+		case dot, newline, comma, rparen, space, tab:
 		default:
 			tok.Type = Illegal
 			return
@@ -707,11 +728,6 @@ func (s *Scanner) scanIdent(tok *Token) {
 	if ix < len(keywords) && keywords[ix] == tok.Literal {
 		tok.Type = Keyword
 	}
-	if tok.Literal == "and" {
-		tok.Type = And
-	} else if tok.Literal == "or" {
-		tok.Type = Or
-	}
 }
 
 func (s *Scanner) scanOperator(tok *Token) {
@@ -738,6 +754,18 @@ func (s *Scanner) scanOperator(tok *Token) {
 		s.readByte()
 		tok.Type = NotEq
 		if s.char != equal {
+			tok.Type = Illegal
+		}
+	case s.char == ampersand:
+		s.readByte()
+		tok.Type = And
+		if s.char != ampersand {
+			tok.Type = Illegal
+		}
+	case s.char == pipe:
+		s.readByte()
+		tok.Type = Or
+		if s.char != pipe {
 			tok.Type = Illegal
 		}
 	}
@@ -789,7 +817,7 @@ func isHexa(b byte) bool {
 }
 
 func isOp(b byte) bool {
-	return b == equal || b == bang || b == langle || b == rangle
+	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe
 }
 
 func isComment(b byte) bool {
