@@ -53,16 +53,28 @@ func init() {
 	sort.Strings(keywords)
 }
 
+const (
+	kwEnum    = "enum"
+	kwPoly    = "polynomial"
+	kwPoint   = "pointpair"
+	kwBlock   = "block"
+	kwImport  = "import"
+	kwInclude = "include"
+	kwData    = "data"
+	kwDeclare = "declare"
+	kwDefine  = "define"
+)
+
 var keywords = []string{
-	"enum",
-	"polynomial",
-	"pointpair",
-	"block",
-	"import",
-	"include",
-	"data",
-	"declare",
-	"define",
+	kwEnum,
+	kwPoly,
+	kwPoint,
+	kwBlock,
+	kwImport,
+	kwInclude,
+	kwData,
+	kwDeclare,
+	kwDefine,
 }
 
 type Position struct {

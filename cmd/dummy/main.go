@@ -43,5 +43,6 @@ func scanFile(r io.Reader) error {
 }
 
 func parseFile(r io.Reader) error {
-	return dissect.Parse(r)
+	_, err := dissect.Parse(r)
+	return err
 }
