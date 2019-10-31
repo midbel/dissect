@@ -202,8 +202,11 @@ func (p *Parser) parseField() (node Node, err error) {
 			p.nextToken()
 			p.nextToken()
 		} else {
-			node = Parameter{id: id}
-			err = p.parseProperties()
+			a := Parameter{id: id}
+			a.props, err = p.parseProperties()
+			if err == nil {
+				node = a
+			}
 		}
 	default:
 		err = fmt.Errorf("parseField: unexpected token %s", p.curr)
@@ -211,34 +214,34 @@ func (p *Parser) parseField() (node Node, err error) {
 	return
 }
 
-func (p *Parser) parseProperties() error {
+func (p *Parser) parseProperties() (map[Token]Token, error) {
+	props := make(map[Token]Token)
 	for p.curr.Type != rsquare {
 		p.nextToken()
 		if !p.curr.isIdent() {
-			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
+		key := p.curr
 		p.nextToken()
 		if p.curr.Type != equal {
-			return fmt.Errorf("parseProperties: expected =, got %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: expected =, got %s", p.curr)
 		}
 		p.nextToken()
 		switch p.curr.Type {
-		case Ident:
-		case Text:
-		case Integer:
-		case Bool:
+		case Ident, Text, Integer, Bool:
+			props[key] = p.curr
 		default:
-			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
 		p.nextToken()
 		switch p.curr.Type {
 		case rsquare, comma:
 		default:
-			return fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
 	}
 	p.nextToken()
-	return nil
+	return props, nil
 }
 
 func (p *Parser) parseDeclare() (Node, error) {

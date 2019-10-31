@@ -62,11 +62,6 @@ func (b Block) isData() bool {
 	return b.id.Type == Keyword && b.id.Literal == kwData
 }
 
-func (b Block) isRoot() bool {
-	pos := b.id.Pos()
-	return !pos.isValid()
-}
-
 type Parameter struct {
 	id    Token
 	props map[Token]Token
