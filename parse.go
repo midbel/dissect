@@ -141,10 +141,8 @@ func (p *Parser) parseData() (Node, error) {
 }
 
 func (p *Parser) parseExpression() error {
-	fmt.Println("parseExpression:", p.curr)
 	p.nextToken()
 	for !p.isDone() {
-		fmt.Println("parseExpression", p.curr)
 		if p.curr.Type == rsquare {
 			break
 		}
@@ -167,11 +165,10 @@ func (p *Parser) parseInclude() (Node, error) {
 	var err error
 	switch p.curr.Type {
 	case Ident, Text:
-		r := Reference{id: p.curr}
-		i.nodes = append(i.nodes, r)
+		i.node = Reference{id: p.curr}
 	case lparen:
 		if ns, e := p.parseStatements(false); e == nil {
-			i.nodes = append(i.nodes, ns...)
+			i.node = Block{id: Token{Literal: kwInline, Type: Keyword, pos: i.Pos()}, nodes: ns}
 		} else {
 			err = e
 		}

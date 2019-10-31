@@ -82,7 +82,7 @@ func (r Reference) Pos() Position {
 type Include struct {
 	pos       Position
 	Predicate Expression
-	nodes     []Node
+	node      Node
 }
 
 func (i Include) Pos() Position {

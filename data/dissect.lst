@@ -51,6 +51,12 @@ data (
   include[predicate] (
     block2
     param2
+    include block4
+    include[predicate] (
+      param5
+      param6
+      include block9
+    )
   )
 
   param5[]

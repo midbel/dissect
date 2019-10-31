@@ -63,6 +63,7 @@ const (
 	kwData    = "data"
 	kwDeclare = "declare"
 	kwDefine  = "define"
+	kwInline  = "inline"
 )
 
 var keywords = []string{
