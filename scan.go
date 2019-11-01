@@ -211,9 +211,10 @@ func (s *Scanner) scanOperator(tok *Token) {
 		}
 	case s.char == bang:
 		s.readByte()
-		tok.Type = NotEq
 		if s.char != equal {
-			tok.Type = Illegal
+			tok.Type = Not
+		} else {
+			tok.Type = NotEq
 		}
 	case s.char == ampersand:
 		s.readByte()

@@ -22,6 +22,7 @@ const (
 	GreatEq
 	And
 	Or
+	Not
 	Newline
 	Illegal
 )
@@ -107,6 +108,8 @@ func (t Token) String() string {
 		lit = t.Literal
 	)
 	switch t.Type {
+	case Not:
+		return "<not>"
 	case And:
 		return "<and>"
 	case Or:
@@ -152,4 +155,22 @@ func (t Token) String() string {
 
 func (t Token) isIdent() bool {
 	return t.Type == Ident || t.Type == Text
+}
+
+func (t Token) isLogical() bool {
+	return t.Type == And || t.Type == Or || t.Type == Not
+}
+
+func (t Token) isComparison() bool {
+	switch t.Type {
+	case Equal:
+	case NotEq:
+	case Lesser:
+	case LessEq:
+	case Greater:
+	case GreatEq:
+	default:
+		return false
+	}
+	return true
 }
