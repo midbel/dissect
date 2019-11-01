@@ -28,7 +28,7 @@ func (p Predicate) String() string {
 
 	b.WriteRune(lparen)
 	if p.Left == nil {
-			b.WriteString("left")
+		b.WriteString("left")
 	} else {
 		b.WriteString(p.Left.String())
 	}
@@ -56,7 +56,7 @@ func (p Predicate) String() string {
 	}
 	b.WriteRune(space)
 	if p.Right == nil {
-			b.WriteString("right")
+		b.WriteString("right")
 	} else {
 		b.WriteString(p.Right.String())
 	}

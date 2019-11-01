@@ -172,7 +172,7 @@ func (p *Parser) parseExpression(pow int) (Node, error) {
 		}
 		expr = n
 	}
-	if p.peek.Type == rsquare{
+	if p.peek.Type == rsquare {
 		p.nextToken()
 	}
 	return expr, nil
