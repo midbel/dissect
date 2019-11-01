@@ -81,7 +81,7 @@ data (
   param0
   include param
 
-  include[ident0 == 1 && ident2 != 3] param
+  include[!(ident0 == 1 || ident0 >= 2) && ident2 != 3] param
   include[ident1 == 2] (
     include int1
     param2

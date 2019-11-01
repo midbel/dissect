@@ -92,6 +92,7 @@ var keywords = []string{
 
 type Node interface {
 	Pos() Position
+	fmt.Stringer
 }
 
 type Expression interface {
@@ -122,6 +123,57 @@ func (t Token) Pos() Position {
 }
 
 func (t Token) String() string {
+	switch t.Type {
+	case EOF:
+		return "eof"
+	case And:
+		return "&&"
+	case Or:
+		return "||"
+	case Not:
+		return "!"
+	case Equal:
+		return "=="
+	case NotEq:
+		return "!="
+	case Lesser:
+		return "<"
+	case LessEq:
+		return "<="
+	case Greater:
+		return ">"
+	case GreatEq:
+		return ">="
+	case Ident, Float, Integer, Bool, Keyword:
+		return t.Literal
+	default:
+		return string(t.Type)
+	}
+}
+
+func (t Token) isIdent() bool {
+	return t.Type == Ident || t.Type == Text
+}
+
+func (t Token) isLogical() bool {
+	return t.Type == And || t.Type == Or || t.Type == Not
+}
+
+func (t Token) isComparison() bool {
+	switch t.Type {
+	case Equal:
+	case NotEq:
+	case Lesser:
+	case LessEq:
+	case Greater:
+	case GreatEq:
+	default:
+		return false
+	}
+	return true
+}
+
+func TokenString(t Token) string {
 	var (
 		str string
 		lit = t.Literal
@@ -170,26 +222,4 @@ func (t Token) String() string {
 		lit = string(t.Type)
 	}
 	return fmt.Sprintf("<%s(%s)>", str, lit)
-}
-
-func (t Token) isIdent() bool {
-	return t.Type == Ident || t.Type == Text
-}
-
-func (t Token) isLogical() bool {
-	return t.Type == And || t.Type == Or || t.Type == Not
-}
-
-func (t Token) isComparison() bool {
-	switch t.Type {
-	case Equal:
-	case NotEq:
-	case Lesser:
-	case LessEq:
-	case Greater:
-	case GreatEq:
-	default:
-		return false
-	}
-	return true
 }

@@ -210,11 +210,11 @@ func (s *Scanner) scanOperator(tok *Token) {
 			tok.Type = GreatEq
 		}
 	case s.char == bang:
-		s.readByte()
-		if s.char != equal {
+		if peek := s.peekByte(); peek != equal {
 			tok.Type = Not
 		} else {
 			tok.Type = NotEq
+			s.readByte()
 		}
 	case s.char == ampersand:
 		s.readByte()

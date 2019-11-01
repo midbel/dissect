@@ -11,6 +11,7 @@ const (
 	bindAnd
 	bindEq
 	bindRel
+	bindNot
 )
 
 var bindings = map[rune]int{
@@ -22,6 +23,7 @@ var bindings = map[rune]int{
 	GreatEq: bindRel,
 	And:     bindAnd,
 	Or:      bindOr,
+	Not:     bindNot,
 }
 
 func bindPower(tok Token) int {
@@ -148,16 +150,75 @@ func (p *Parser) parseData() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parsePredicate() (Expression, error) {
+func (p *Parser) parsePredicate() (Node, error) {
 	p.nextToken()
-	for !p.isDone() {
-		if p.curr.Type == rsquare {
-			break
-		}
+	node, err := p.parseExpression(bindLowest)
+	if err == nil {
 		p.nextToken()
 	}
+	return node, err
+}
+
+func (p *Parser) parseExpression(pow int) (Node, error) {
+	expr, err := p.parsePrefix()
+	if err != nil {
+		return nil, err
+	}
+	for p.peek.Type != rsquare && pow < bindPower(p.peek) {
+		p.nextToken()
+		n, err := p.parseConditional(expr)
+		if err != nil {
+			return nil, err
+		}
+		expr = n
+	}
+	if p.peek.Type == rsquare{
+		p.nextToken()
+	}
+	return expr, nil
+}
+
+func (p *Parser) parsePrefix() (Node, error) {
+	var expr Node
+	switch p.curr.Type {
+	case Not:
+		p.nextToken()
+		right, err := p.parseExpression(bindNot)
+		if err != nil {
+			return nil, err
+		}
+		expr = Negate{Right: right}
+	case lparen:
+		p.nextToken()
+		n, err := p.parseExpression(bindLowest)
+		if err != nil {
+			return nil, err
+		}
+		if p.peek.Type != rparen {
+			return nil, fmt.Errorf("parseExpression: expected ), got %s", p.peek)
+		} else {
+			p.nextToken()
+		}
+		expr = n
+	default:
+		expr = p.curr
+	}
+	return expr, nil
+}
+
+func (p *Parser) parseConditional(left Node) (Node, error) {
+	expr := Predicate{
+		Left:    left,
+		operand: p.curr.Type,
+	}
+	pow := bindPower(p.curr)
 	p.nextToken()
-	return nil, nil
+
+	right, err := p.parseExpression(pow)
+	if err == nil {
+		expr.Right = right
+	}
+	return expr, err
 }
 
 func (p *Parser) parseInclude() (Node, error) {

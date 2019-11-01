@@ -35,9 +35,13 @@ func dumpNode(n Node, level int) error {
 		}
 		fmt.Printf("%s)", indent)
 	case Include:
-		fmt.Printf("%sinclude(predicate=???, pos=%s) (\n", indent, n.Pos())
-		dumpNode(n.node, level+1)
-		fmt.Printf("%s)", indent)
+		if n.Predicate == nil {
+			return dumpNode(n.node, level)
+		} else {
+			fmt.Printf("%sinclude(predicate=%s, pos=%s) (\n", indent, n.Predicate, n.Pos())
+			dumpNode(n.node, level+1)
+			fmt.Printf("%s)", indent)
+		}
 	case Reference:
 		fmt.Printf("%sreference(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
 	case Parameter:
