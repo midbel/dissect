@@ -35,6 +35,11 @@ enum TimeType (
   3 = Invalid
 )
 
+declare (
+  coarse[type=u32]
+  fine[type=u8]
+)
+
 block pid (
   version[size=3]
   type[size=1, transform=Type]
@@ -48,8 +53,8 @@ block segment (
 )
 
 block secondary (
-  coarse[type=u32]
-  fine[type=u8]
+  coarse
+  fine
   checksum[size=1]
   spare[size=1]
   timeid[size=2, transform=TimeType]
