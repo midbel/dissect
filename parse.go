@@ -24,6 +24,14 @@ var bindings = map[rune]int{
 	Or:      bindOr,
 }
 
+func bindPower(tok Token) int {
+	pw := bindLowest
+	if p, ok := bindings[tok.Type]; ok {
+		pw = p
+	}
+	return pw
+}
+
 type Parser struct {
 	scan *Scanner
 
@@ -152,7 +160,7 @@ func (p *Parser) parseData() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseExpression() (Expression, error) {
+func (p *Parser) parsePredicate() (Expression, error) {
 	p.nextToken()
 	for !p.isDone() {
 		if p.curr.Type == rsquare {
@@ -161,15 +169,23 @@ func (p *Parser) parseExpression() (Expression, error) {
 		p.nextToken()
 	}
 	p.nextToken()
-	return empty{}, nil
+	return Relation{}, nil
 }
+
+// func (p *Parser) parseExpression(bp int) (Expression, error) {
+// 	left := p.curr
+// 	for p.peek.Type != rsquare && bp < bindPower(p.peek) {
+//
+// 	}
+// 	return nil, nil
+// }
 
 func (p *Parser) parseInclude() (Node, error) {
 	i := Include{pos: p.curr.Pos()}
 
 	p.nextToken()
 	if p.curr.Type == lsquare {
-		expr, err := p.parseExpression()
+		expr, err := p.parsePredicate()
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +254,7 @@ func (p *Parser) parseProperties() (map[Token]Token, error) {
 		}
 		p.nextToken()
 		switch p.curr.Type {
-		case Ident, Text, Integer, Bool:
+		case Ident, Text, Integer, Bool, Keyword:
 			props[key] = p.curr
 		default:
 			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)

@@ -40,8 +40,12 @@ declare (
   fine[type=u8]
 )
 
+define (
+  Version = 0
+)
+
 block pid (
-  version[size=3]
+  version[size=3, expect=Version]
   type[size=1, transform=Type]
   second[size=1, type=bool]
   apid[size=11, type=u16]

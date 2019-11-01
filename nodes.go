@@ -50,7 +50,7 @@ type Set struct {
 
 type Parameter struct {
 	id    Token
-	props map[string]Node
+	props map[Token]Token
 }
 
 func (p Parameter) Pos() Position {
@@ -162,6 +162,32 @@ func (b Block) resolveBlock(str string) (Block, error) {
 	return Block{}, fmt.Errorf("%s: block not declared", str)
 }
 
+func (b Block) resolveConstant(str string) (Constant, error) {
+	for _, n := range b.nodes {
+		bck, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		if bck.id.Literal == kwDefine && bck.id.Type == Keyword {
+			return bck.getConstant(str)
+		}
+	}
+	return Constant{}, fmt.Errorf("%s: constant not declared", str)
+}
+
+func (b Block) getConstant(str string) (Constant, error) {
+	for _, n := range b.nodes {
+		c, ok := n.(Constant)
+		if !ok {
+			continue
+		}
+		if c.id.Literal == str {
+			return c, nil
+		}
+	}
+	return Constant{}, fmt.Errorf("%s: constant not declared", str)
+}
+
 func (b Block) getParameter(str string) (Parameter, error) {
 	for _, n := range b.nodes {
 		p, ok := n.(Parameter)
@@ -193,11 +219,11 @@ func traverse(dat Block, root Block) (Node, error) {
 	for i, n := range dat.nodes {
 		switch n := n.(type) {
 		case Parameter:
-			x, err := traverseParameter(n, root)
-			if err != nil {
-				return nil, err
-			}
-			nodes = append(nodes, x)
+			// x, err := traverseParameter(n, root)
+			// if err != nil {
+			// 	return nil, err
+			// }
+			nodes = append(nodes, n)
 		case Reference:
 			p, err := root.resolveParameter(n.id.Literal)
 			if err != nil {
@@ -222,23 +248,34 @@ func traverse(dat Block, root Block) (Node, error) {
 	return dat, nil
 }
 
-func traverseParameter(p Parameter, root Block) (Node, error) {
-	for k, v := range p.props {
-		switch k {
-		case "transform":
-			tok, ok := v.(Token)
-			if !ok {
-				return nil, fmt.Errorf("unexpected token type %T", v)
-			}
-			a, err := root.resolvePair(tok.Literal)
-			if err != nil {
-				return nil, err
-			}
-			p.props[k] = a
-		}
-	}
-	return p, nil
-}
+// func traverseParameter(p Parameter, root Block) (Node, error) {
+// 	for k, v := range p.props {
+// 		tok, ok := v.(Token)
+// 		if !ok {
+// 			return nil, fmt.Errorf("unexpected token type %T", v)
+// 		}
+// 		var (
+// 			node Node
+// 			err  error
+// 		)
+// 		switch k {
+// 		case "transform":
+// 			node, err = root.resolvePair(tok.Literal)
+// 		default:
+// 			if tok.Type == Ident {
+// 				fmt.Println(">>", tok.Literal)
+// 				node, err = root.resolveConstant(tok.Literal)
+// 			} else {
+// 				node = v
+// 			}
+// 		}
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		p.props[k] = node
+// 	}
+// 	return p, nil
+// }
 
 func traverseInclude(i Include, root Block) (Node, error) {
 	switch n := i.node.(type) {

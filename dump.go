@@ -46,33 +46,7 @@ func dumpNode(n Node, level int) error {
 			fmt.Println("[")
 			ni := indent + strings.Repeat(" ", level*2)
 			for k, v := range n.props {
-				var str string
-				switch v := v.(type) {
-				case Token:
-					str = v.Literal
-				case Pair:
-					var b strings.Builder
-					b.WriteString(v.id.Literal)
-					b.WriteRune(lsquare)
-					for i, n := range v.nodes {
-						c, ok := n.(Constant)
-						if !ok {
-							continue
-						}
-						b.WriteString(c.id.Literal)
-						b.WriteRune(equal)
-						b.WriteString(c.value.Literal)
-						if i < len(v.nodes) - 1 {
-							b.WriteRune(comma)
-							b.WriteRune(space)
-						}
-					}
-					b.WriteRune(rsquare)
-					str = b.String()
-				default:
-					str = "???"
-				}
-				fmt.Printf("%sproperty(name=%s, value=%s)\n", ni, k, str)
+				fmt.Printf("%sproperty(name=%s, value=%s)\n", ni, k.Literal, v.Literal)
 			}
 			fmt.Print(indent + "]")
 		}
