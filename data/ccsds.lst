@@ -1,0 +1,72 @@
+enum Type (
+  0 = system
+  1 = payload
+)
+
+enum Segmentation (
+  0 = continuation
+  1 = start
+  2 = stop
+  3 = unsegmented
+)
+
+enum PacketType (
+  0 = Default
+  1 = DataDump
+  2 = DataSegument
+  3 = EssentialHK
+  4 = SystemHK
+  5 = PayloadHK
+  6 = ScienceData
+  7 = AncillaryData
+  8 = EssentialCmd
+  9 = PayloadCmd
+  10 = DataLoad
+  11 = Response
+  12 = Report
+  13 = Exception
+  14 = Acknowledge
+)
+
+enum TimeType (
+  0 = NotUsed
+  1 = Generated
+  2 = Executed
+  3 = Invalid
+)
+
+block pid (
+  version[size=3]
+  type[size=1, transform=Type]
+  second[size=1, type=bool]
+  apid[size=11, type=u16]
+)
+
+block segment (
+  segment[size=2, transform=Segmentation]
+  sequence[size=14, type=u16]
+)
+
+block secondary (
+  coarse[type=u32]
+  fine[type=u8]
+  checksum[size=1]
+  spare[size=1]
+  timeid[size=2, transform=TimeType]
+  packid[size=4, transform=PacketType]
+  sid[type=u32]
+)
+
+block private (
+  word1[type=u16]
+  word2[type=u16]
+)
+
+data (
+  include pid
+  include segment
+  length[type=u16]
+
+  include[second==1] secondary
+  include private
+)
