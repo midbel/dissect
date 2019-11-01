@@ -90,6 +90,14 @@ var keywords = []string{
 	"bool",
 }
 
+type Node interface {
+	Pos() Position
+}
+
+type Expression interface {
+	Eval() bool
+}
+
 type Position struct {
 	Line   int
 	Column int

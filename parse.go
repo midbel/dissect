@@ -64,18 +64,6 @@ func Parse(r io.Reader) (Node, error) {
 	return p.Parse()
 }
 
-func Merge(r io.Reader) (Node, error) {
-	n, err := Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	root, ok := n.(Block)
-	if !ok {
-		return nil, fmt.Errorf("root node should be a Block!")
-	}
-	return root.Merge()
-}
-
 func (p *Parser) Parse() (Node, error) {
 	var root Block
 
@@ -169,16 +157,8 @@ func (p *Parser) parsePredicate() (Expression, error) {
 		p.nextToken()
 	}
 	p.nextToken()
-	return Relation{}, nil
+	return nil, nil
 }
-
-// func (p *Parser) parseExpression(bp int) (Expression, error) {
-// 	left := p.curr
-// 	for p.peek.Type != rsquare && bp < bindPower(p.peek) {
-//
-// 	}
-// 	return nil, nil
-// }
 
 func (p *Parser) parseInclude() (Node, error) {
 	i := Include{pos: p.curr.Pos()}
