@@ -12,9 +12,33 @@ type Expression interface {
 	Eval(Set) bool
 }
 
-type empty struct{}
+type Logical struct {
+	pos     Position
+	Left    Node
+	Right   Node
+	operand rune
+}
 
-func (e empty) Eval(_ Set) bool {
+func (l Logical) Pos() Position {
+	return l.pos
+}
+
+func (l Logical) Eval(set Set) bool {
+	return true
+}
+
+type Relation struct {
+	pos     Position
+	Left    Node
+	Right   Node
+	operand rune
+}
+
+func (r Relation) Pos() Position {
+	return r.pos
+}
+
+func (r Relation) Eval(_ Set) bool {
 	return true
 }
 
@@ -26,7 +50,7 @@ type Set struct {
 
 type Parameter struct {
 	id    Token
-	props map[Token]Token
+	props map[string]Node
 }
 
 func (p Parameter) Pos() Position {
@@ -112,20 +136,20 @@ func (b Block) Merge() (Node, error) {
 	return nil, fmt.Errorf("data block not found")
 }
 
-func (b Block) findParam(str string) (Parameter, error) {
+func (b Block) resolveParameter(str string) (Parameter, error) {
 	for _, n := range b.nodes {
 		bck, ok := n.(Block)
 		if !ok {
 			continue
 		}
 		if bck.id.Literal == kwDeclare && bck.id.Type == Keyword {
-			return bck.findParameter(str)
+			return bck.getParameter(str)
 		}
 	}
 	return Parameter{}, fmt.Errorf("%s: parameter not declared", str)
 }
 
-func (b Block) findBlock(str string) (Block, error) {
+func (b Block) resolveBlock(str string) (Block, error) {
 	for _, n := range b.nodes {
 		bck, ok := n.(Block)
 		if !ok {
@@ -138,7 +162,7 @@ func (b Block) findBlock(str string) (Block, error) {
 	return Block{}, fmt.Errorf("%s: block not declared", str)
 }
 
-func (b Block) findParameter(str string) (Parameter, error) {
+func (b Block) getParameter(str string) (Parameter, error) {
 	for _, n := range b.nodes {
 		p, ok := n.(Parameter)
 		if !ok {
@@ -151,14 +175,31 @@ func (b Block) findParameter(str string) (Parameter, error) {
 	return Parameter{}, fmt.Errorf("%s: parameter not declared", str)
 }
 
+func (b Block) resolvePair(str string) (Node, error) {
+	for _, n := range b.nodes {
+		pair, ok := n.(Pair)
+		if !ok {
+			continue
+		}
+		if pair.id.Literal == str {
+			return pair, nil
+		}
+	}
+	return nil, fmt.Errorf("%s: pair not declared", str)
+}
+
 func traverse(dat Block, root Block) (Node, error) {
 	nodes := make([]Node, 0, len(dat.nodes))
 	for i, n := range dat.nodes {
 		switch n := n.(type) {
 		case Parameter:
-			nodes = append(nodes, n)
+			x, err := traverseParameter(n, root)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, x)
 		case Reference:
-			p, err := root.findParam(n.id.Literal)
+			p, err := root.resolveParameter(n.id.Literal)
 			if err != nil {
 				return nil, err
 			}
@@ -181,10 +222,28 @@ func traverse(dat Block, root Block) (Node, error) {
 	return dat, nil
 }
 
+func traverseParameter(p Parameter, root Block) (Node, error) {
+	for k, v := range p.props {
+		switch k {
+		case "transform":
+			tok, ok := v.(Token)
+			if !ok {
+				return nil, fmt.Errorf("unexpected token type %T", v)
+			}
+			a, err := root.resolvePair(tok.Literal)
+			if err != nil {
+				return nil, err
+			}
+			p.props[k] = a
+		}
+	}
+	return p, nil
+}
+
 func traverseInclude(i Include, root Block) (Node, error) {
 	switch n := i.node.(type) {
 	case Reference:
-		b, err := root.findBlock(n.id.Literal)
+		b, err := root.resolveBlock(n.id.Literal)
 		if err != nil {
 			return nil, err
 		}
@@ -201,7 +260,7 @@ func traverseInclude(i Include, root Block) (Node, error) {
 	default:
 		return i, fmt.Errorf("unexpected node type %T", i.node)
 	}
-	node := i
+	var node Node = i
 	if i.Predicate == nil {
 		node = i.node
 	}

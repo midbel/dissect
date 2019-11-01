@@ -81,19 +81,19 @@ data (
   param0
   include param
 
-  include[predicate] param
-  include[predicate] (
+  include[ident0 == 1 && ident2 != 3] param
+  include[ident1 == 2] (
     include int1
     param2
     include int2
-    include[predicate] (
+    include[ident1 > 2] (
       integer5
       integer6
       include misc1
     )
   )
 
-  ident5[type=i8]
+  ident5[type=i8, transform=Eighty7]
   ident6[type=i8]
   include float2
 )
