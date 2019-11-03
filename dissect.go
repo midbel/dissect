@@ -95,10 +95,6 @@ type Node interface {
 	fmt.Stringer
 }
 
-type Expression interface {
-	Eval() bool
-}
-
 type Position struct {
 	Line   int
 	Column int
