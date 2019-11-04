@@ -3,6 +3,7 @@ package dissect
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 type Value interface{}
@@ -12,6 +13,7 @@ type Expression interface {
 }
 
 type decoder interface {
+	Numbit() int
 	Decode([]byte, []Value) ([]Value, error)
 }
 
@@ -20,11 +22,29 @@ type Decoder struct {
 }
 
 func NewDecoder(r io.Reader) (*Decoder, error) {
-	_, err := Parse(r)
+	n, err := Parse(r)
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	root, ok := n.(Block)
+	if !ok {
+		return nil, fmt.Errorf("root node is not a block")
+	}
+	dat, err := root.ResolveData()
+	if err != nil {
+		return nil, err
+	}
+	ds, err := merge(dat, root)
+	if err != nil {
+		return nil, err
+	}
+	return &Decoder{decoders: ds}, nil
+}
+
+func (d Decoder) Dump() {
+	for _, d := range d.decoders {
+		dumpDecoder(d, 0)
+	}
 }
 
 func (d Decoder) Decode(buf []byte) ([]Value, error) {
@@ -49,6 +69,14 @@ type chunk struct {
 
 	offset int
 	repeat int
+}
+
+func (c chunk) Numbit() int {
+	var z int
+	for _, d := range c.decoders {
+		z += d.Numbit()
+	}
+	return z
 }
 
 func (c chunk) Decode(buf []byte, env []Value) ([]Value, error) {
@@ -82,8 +110,11 @@ type field struct {
 	repeat int
 }
 
+func (f field) Numbit() int {
+	return f.size
+}
+
 func (f field) Decode(buf []byte, env []Value) ([]Value, error) {
-	// repeat := f.repeat.Resolve(env)
 	if f.repeat == 0 {
 		f.repeat++
 	}
@@ -117,4 +148,73 @@ func (f field) decodeRaw(buf []byte) (Value, error) {
 		return nil, fmt.Errorf("unsupported type %s", f.kind)
 	}
 	return v, nil
+}
+
+func merge(dat, root Block) ([]decoder, error) {
+	var (
+		decs []decoder
+		pos  int
+	)
+	for _, n := range dat.nodes {
+		var d decoder
+		switch n := n.(type) {
+		case Parameter:
+			d = field{
+				name: n.id.Literal,
+				pos:  pos,
+			}
+		case Reference:
+			p, err := root.ResolveParameter(n.id.Literal)
+			if err != nil {
+				return nil, err
+			}
+			d = field{
+				name: p.id.Literal,
+        size: p.numbit(),
+			}
+		case Include:
+			var (
+				b   Block
+				err error
+			)
+			if r, ok := n.node.(Reference); ok {
+				b, err = root.ResolveBlock(r.id.Literal)
+			} else if x, ok := n.node.(Block); ok {
+				b = x
+			} else {
+				err = fmt.Errorf("unexpected block type %T", n.node)
+			}
+			if err != nil {
+				return nil, err
+			}
+			ds, err := merge(b, root)
+			if err != nil {
+				return nil, err
+			}
+			d = chunk{
+				name:     b.id.Literal,
+				decoders: ds,
+			}
+		default:
+			return nil, fmt.Errorf("unexpected node type %T", n)
+		}
+		decs = append(decs, d)
+	}
+	return decs, nil
+}
+
+func dumpDecoder(d decoder, level int) {
+	indent := strings.Repeat(" ", level*2)
+	switch d := d.(type) {
+	case field:
+		fmt.Printf("%sfield(id: %s, numbit: %d, pos: %d)\n", indent, d.name, d.Numbit(), d.pos)
+	case chunk:
+		fmt.Printf("%sblock(id: %s, numbit: %d, pos: %d) (\n", indent, d.name, d.Numbit(), d.pos)
+		for _, d := range d.decoders {
+			dumpDecoder(d, level+1)
+		}
+		fmt.Println(indent+")")
+	default:
+		return
+	}
 }

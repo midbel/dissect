@@ -63,7 +63,7 @@ block secondary (
   spare[numbit=1]
   timeid[numbit=2, transform=TimeType]
   packid[numbit=4, transform=PacketType]
-  sid[type=u32]
+  sid[numbit=32, type=u32]
 )
 
 block private (
