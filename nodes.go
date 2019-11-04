@@ -97,6 +97,22 @@ func (p Parameter) numbit() int {
 	return size
 }
 
+func (p Parameter) is() byte {
+	z, ok := p.props["type"]
+	if !ok {
+		return 'u'
+	}
+	return z.Literal[0]
+}
+
+func (p Parameter) offset() int {
+	var offset int
+	if z, ok := p.props["offset"]; ok {
+		offset, _ = strconv.Atoi(z.Literal)
+	}
+	return offset
+}
+
 type Reference struct {
 	id Token
 }
