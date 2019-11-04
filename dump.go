@@ -50,7 +50,7 @@ func dumpNode(n Node, level int) error {
 			fmt.Println("[")
 			ni := indent + strings.Repeat(" ", level*2)
 			for k, v := range n.props {
-				fmt.Printf("%sproperty(name=%s, value=%s)\n", ni, k.Literal, v.Literal)
+				fmt.Printf("%sproperty(name=%s, value=%s)\n", ni, k, v.Literal)
 			}
 			fmt.Print(indent + "]")
 		}

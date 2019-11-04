@@ -2,6 +2,7 @@ package dissect
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -71,7 +72,7 @@ func (p Predicate) Pos() Position {
 
 type Parameter struct {
 	id    Token
-	props map[Token]Token
+	props map[string]Token
 }
 
 func (p Parameter) String() string {
@@ -80,6 +81,20 @@ func (p Parameter) String() string {
 
 func (p Parameter) Pos() Position {
 	return p.id.pos
+}
+
+func (p Parameter) numbit() int {
+	var size int
+	if z, ok := p.props["type"]; ok {
+		size, _ = strconv.Atoi(z.Literal[1:])
+	}
+	if z, ok := p.props["numbit"]; ok {
+		size, _ = strconv.Atoi(z.Literal)
+	}
+	if size == 0 {
+		size++
+	}
+	return size
 }
 
 type Reference struct {
@@ -162,4 +177,58 @@ func (b Block) blockName() string {
 
 func (b Block) isData() bool {
 	return b.id.Type == Keyword && b.id.Literal == kwData
+}
+
+func (b Block) ResolveData() (Block, error) {
+	dat, err := b.ResolveBlock(kwData)
+	if err != nil {
+		return dat, err
+	}
+	if !dat.isData() {
+		err = fmt.Errorf("data block not found")
+	}
+	return dat, err
+}
+
+func (b Block) ResolveBlock(block string) (Block, error) {
+	for _, n := range b.nodes {
+		b, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		if b.id.Literal == block {
+			return b, nil
+		}
+	}
+	return Block{}, fmt.Errorf("%s: block not defined", block)
+}
+
+func (b Block) ResolveParameter(param string) (Parameter, error) {
+	def, err := b.ResolveBlock(kwDeclare)
+	if err != nil {
+		return Parameter{}, err
+	}
+	for _, n := range def.nodes {
+		p, ok := n.(Parameter)
+		if !ok {
+			continue
+		}
+		if p.id.Literal == param {
+			return p, nil
+		}
+	}
+	return Parameter{}, fmt.Errorf("%s: parameter not defined")
+}
+
+func (b Block) ResolvePair(pair string) (Pair, error) {
+	for _, n := range b.nodes {
+		p, ok := n.(Pair)
+		if !ok {
+			continue
+		}
+		if p.id.Literal == pair {
+			return p, nil
+		}
+	}
+	return Pair{}, fmt.Errorf("%s: pair not defined")
 }

@@ -281,8 +281,8 @@ func (p *Parser) parseField() (node Node, err error) {
 	return
 }
 
-func (p *Parser) parseProperties() (map[Token]Token, error) {
-	props := make(map[Token]Token)
+func (p *Parser) parseProperties() (map[string]Token, error) {
+	props := make(map[string]Token)
 	for p.curr.Type != rsquare {
 		p.nextToken()
 		if !p.curr.isIdent() {
@@ -296,7 +296,7 @@ func (p *Parser) parseProperties() (map[Token]Token, error) {
 		p.nextToken()
 		switch p.curr.Type {
 		case Ident, Text, Integer, Bool, Keyword:
-			props[key] = p.curr
+			props[key.Literal] = p.curr
 		default:
 			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
 		}
