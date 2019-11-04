@@ -66,6 +66,82 @@ func Parse(r io.Reader) (Node, error) {
 	return p.Parse()
 }
 
+func Merge(r io.Reader) (Node, error) {
+	n, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	root, ok := n.(Block)
+	if !ok {
+		return nil, fmt.Errorf("root node is not a block")
+	}
+	dat, err := root.ResolveData()
+	if err != nil {
+		return nil, err
+	}
+	return merge(dat, root)
+}
+
+func merge(dat, root Block) (Node, error) {
+	var nodes []Node
+	for _, n := range dat.nodes {
+		var (
+			node Node
+			err  error
+		)
+		switch n := n.(type) {
+		case Parameter:
+			node = n
+		case Reference:
+			node, err = root.ResolveParameter(n.id.Literal)
+		case Include:
+			node, err = mergeInclude(n, root)
+		default:
+			err = fmt.Errorf("block: unexpected node type %T", n)
+		}
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+	dat = Block{
+		id:    dat.id,
+		nodes: nodes,
+	}
+	return dat, nil
+}
+
+func mergeInclude(n Include, root Block) (Node, error) {
+	var (
+		node Node
+		err  error
+	)
+	switch i := n.node.(type) {
+	case Reference:
+		node, err = root.ResolveBlock(i.id.Literal)
+		if err != nil {
+			break
+		}
+		if b, ok := node.(Block); !ok {
+			return nil, fmt.Errorf("include: unexpected node type %T", n)
+		} else {
+			node, err = merge(b, root)
+		}
+	case Block:
+		node, err = merge(i, root)
+	default:
+		err = fmt.Errorf("include: unexpected node type %T", n)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if n.Predicate != nil {
+		n.node = node
+		node = n
+	}
+	return node, nil
+}
+
 func (p *Parser) Parse() (Node, error) {
 	var root Block
 
