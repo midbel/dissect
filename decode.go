@@ -8,37 +8,6 @@ import (
 
 type Value interface{}
 
-type Value struct {
-	Name  string
-	Pos   int
-	Raw   interface{}
-	Value interface{}
-}
-
-func (v Value) Equal(value Value) bool {
-	return false
-}
-
-func (v Value) Lesser(value Value) bool {
-	return false
-}
-
-func (v Value) Notequal(value Value) bool {
-	return !v.Equal(value)
-}
-
-func (v Value) LesserOrEqual(value Value) bool {
-	return v.Equal(value) || v.Lesser(value)
-}
-
-func (v Value) Greater(value Value) bool {
-	return v.NotEqual(value) && !v.Lesser(value)
-}
-
-func (v Value) GreaterOrEqual(value Value) bool {
-	return v.Equal(value) || v.Greater(value)
-}
-
 // type resolver interface {
 // 	Resolve([]Value) (Value, error)
 // }
