@@ -192,7 +192,7 @@ func (s *Scanner) scanIdent(tok *Token) {
 func (s *Scanner) scanOperator(tok *Token) {
 	switch peek := s.peekByte(); {
 	case s.char == equal:
-		tok.Type = equal
+		tok.Type = Assign
 		if peek == s.char {
 			s.readByte()
 			tok.Type = Equal

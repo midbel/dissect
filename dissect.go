@@ -14,6 +14,7 @@ const (
 	Float
 	Bool
 	Comment
+	Assign
 	Equal
 	NotEq
 	Lesser
@@ -65,6 +66,7 @@ const (
 	kwDeclare = "declare"
 	kwDefine  = "define"
 	kwInline  = "inline"
+	kwLet     = "let"
 )
 
 var keywords = []string{
@@ -77,6 +79,7 @@ var keywords = []string{
 	kwData,
 	kwDeclare,
 	kwDefine,
+	kwLet,
 }
 
 type Node interface {
@@ -115,6 +118,8 @@ func (t Token) String() string {
 		return "&&"
 	case Or:
 		return "||"
+	case Assgign:
+		return "="
 	case Not:
 		return "!"
 	case Equal:
@@ -186,6 +191,8 @@ func TokenString(t Token) string {
 		str = "bool"
 	case Comment:
 		str = "comment"
+	case Assign:
+		return "assignment"
 	case Equal:
 		return "<equal>"
 	case NotEq:

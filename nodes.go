@@ -166,6 +166,19 @@ func (p Pair) Pos() Position {
 	return p.id.Pos()
 }
 
+type Let struct {
+	id   Token
+	node Node
+}
+
+func (t Let) String() string {
+	return t.node.String()
+}
+
+func (t Let) Pos() Position {
+	return t.id.Pos()
+}
+
 type Block struct {
 	id    Token
 	nodes []Node
