@@ -19,9 +19,9 @@ func (n Negate) Pos() Position {
 }
 
 type Predicate struct {
-	Left    Node
-	Right   Node
-	operand rune
+	Left     Node
+	Right    Node
+	operator rune
 }
 
 func (p Predicate) String() string {
@@ -35,7 +35,7 @@ func (p Predicate) String() string {
 	}
 	b.WriteRune(space)
 
-	switch p.operand {
+	switch p.operator {
 	case Equal:
 		b.WriteString("==")
 	case NotEq:
@@ -85,11 +85,11 @@ func (p Parameter) Pos() Position {
 
 func (p Parameter) numbit() int {
 	var size int
-	if z, ok := p.props["type"]; ok {
-		size, _ = strconv.Atoi(z.Literal[1:])
-	}
 	if z, ok := p.props["numbit"]; ok {
 		size, _ = strconv.Atoi(z.Literal)
+	}
+	if z, ok := p.props["type"]; ok && size == 0 {
+		size, _ = strconv.Atoi(z.Literal[1:])
 	}
 	if size == 0 {
 		size++

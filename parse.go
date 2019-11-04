@@ -208,8 +208,8 @@ func (p *Parser) parsePrefix() (Node, error) {
 
 func (p *Parser) parseConditional(left Node) (Node, error) {
 	expr := Predicate{
-		Left:    left,
-		operand: p.curr.Type,
+		Left:     left,
+		operator: p.curr.Type,
 	}
 	pow := bindPower(p.curr)
 	p.nextToken()

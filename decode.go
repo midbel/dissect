@@ -8,8 +8,88 @@ import (
 
 type Value interface{}
 
-type Expression interface {
-	Skip([]Value) bool
+type Value struct {
+	Name  string
+	Pos   int
+	Raw   interface{}
+	Value interface{}
+}
+
+func (v Value) Equal(value Value) bool {
+	return false
+}
+
+func (v Value) Lesser(value Value) bool {
+	return false
+}
+
+func (v Value) Notequal(value Value) bool {
+	return !v.Equal(value)
+}
+
+func (v Value) LesserOrEqual(value Value) bool {
+	return v.Equal(value) || v.Lesser(value)
+}
+
+func (v Value) Greater(value Value) bool {
+	return v.NotEqual(value) && !v.Lesser(value)
+}
+
+func (v Value) GreaterOrEqual(value Value) bool {
+	return v.Equal(value) || v.Greater(value)
+}
+
+// type resolver interface {
+// 	Resolve([]Value) (Value, error)
+// }
+
+type accepter interface {
+	Accept([]Value) bool
+}
+
+type reverse struct {
+	right accepter
+}
+
+func (r reverse) Accept(env []Value) bool {
+	return !r.right.Accept(env)
+}
+
+type relational struct {
+	left     accepter
+	right    accepter
+	operator rune
+}
+
+func (r relational) Accept(env []Value) bool {
+	switch r.operator {
+	case And:
+		return r.left.Accept(env) && r.right.Accept(env)
+	case Or:
+		return r.left.Accept(env) || r.right.Accept(env)
+	default:
+		return false
+	}
+}
+
+type logical struct {
+	value    Value
+	operator rune
+}
+
+func (g logical) Accept(env []Value) bool {
+	var ok bool
+	switch g.operator {
+	case Equal:
+	case NotEq:
+	case Lesser:
+	case LessEq:
+	case Greater:
+	case GreatEq:
+	default:
+		return false
+	}
+	return ok
 }
 
 type decoder interface {
@@ -34,7 +114,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	ds, err := merge(dat, root)
+	ds, err := build(dat, root)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +142,8 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 }
 
 type chunk struct {
-	name string
-	expr Expression
+	name   string
+	accept accepter
 
 	decoders []decoder
 
@@ -80,7 +160,7 @@ func (c chunk) Numbit() int {
 }
 
 func (c chunk) Decode(buf []byte, env []Value) ([]Value, error) {
-	if c.expr != nil && c.expr.Skip(env) {
+	if c.accept != nil && !c.accept.Accept(env) {
 		return nil, nil
 	}
 	if c.repeat == 0 {
@@ -150,18 +230,15 @@ func (f field) decodeRaw(buf []byte) (Value, error) {
 	return v, nil
 }
 
-func merge(dat, root Block) ([]decoder, error) {
-	var (
-		decs []decoder
-		pos  int
-	)
+func build(dat, root Block) ([]decoder, error) {
+	var decs []decoder
 	for _, n := range dat.nodes {
 		var d decoder
 		switch n := n.(type) {
 		case Parameter:
 			d = field{
 				name: n.id.Literal,
-				pos:  pos,
+				size: n.numbit(),
 			}
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)
@@ -170,13 +247,18 @@ func merge(dat, root Block) ([]decoder, error) {
 			}
 			d = field{
 				name: p.id.Literal,
-        size: p.numbit(),
+				size: p.numbit(),
 			}
 		case Include:
 			var (
 				b   Block
 				err error
+				cdt accepter
 			)
+			cdt, err = accept(n.Predicate, root)
+			if err != nil {
+				return nil, err
+			}
 			if r, ok := n.node.(Reference); ok {
 				b, err = root.ResolveBlock(r.id.Literal)
 			} else if x, ok := n.node.(Block); ok {
@@ -187,12 +269,13 @@ func merge(dat, root Block) ([]decoder, error) {
 			if err != nil {
 				return nil, err
 			}
-			ds, err := merge(b, root)
+			ds, err := build(b, root)
 			if err != nil {
 				return nil, err
 			}
 			d = chunk{
 				name:     b.id.Literal,
+				accept:   cdt,
 				decoders: ds,
 			}
 		default:
@@ -203,17 +286,59 @@ func merge(dat, root Block) ([]decoder, error) {
 	return decs, nil
 }
 
+func accept(n Node, root Block) (accepter, error) {
+	if n == nil {
+		return nil, nil
+	}
+	switch n := n.(type) {
+	case Negate:
+		a, err := accept(n.Right, root)
+		if err == nil {
+			a = reverse{right: a}
+		}
+		return a, nil
+	case Predicate:
+		if n.operator == And || n.operator == Or {
+			left, err := accept(n.Left, root)
+			if err != nil {
+				return nil, err
+			}
+			right, err := accept(n.Right, root)
+			if err != nil {
+				return nil, err
+			}
+			return relational{
+				left:     left,
+				right:    right,
+				operator: n.operator,
+			}, nil
+		}
+		left, ok := n.Left.(Token)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node Type: %T", left)
+		}
+		right, ok := n.Right.(Token)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node Type: %T", right)
+		}
+		return logical{operator: n.operator}, nil
+	default:
+		return nil, fmt.Errorf("unexpected node type %T", n)
+	}
+	return nil, nil
+}
+
 func dumpDecoder(d decoder, level int) {
 	indent := strings.Repeat(" ", level*2)
 	switch d := d.(type) {
 	case field:
-		fmt.Printf("%sfield(id: %s, numbit: %d, pos: %d)\n", indent, d.name, d.Numbit(), d.pos)
+		fmt.Printf("%sfield(id: %s, numbit: %d)\n", indent, d.name, d.Numbit())
 	case chunk:
-		fmt.Printf("%sblock(id: %s, numbit: %d, pos: %d) (\n", indent, d.name, d.Numbit(), d.pos)
+		fmt.Printf("%sblock(id: %s, numbit: %d) (\n", indent, d.name, d.Numbit())
 		for _, d := range d.decoders {
 			dumpDecoder(d, level+1)
 		}
-		fmt.Println(indent+")")
+		fmt.Println(indent + ")")
 	default:
 		return
 	}
