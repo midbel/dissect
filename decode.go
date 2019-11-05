@@ -66,8 +66,8 @@ type state struct {
 	Values []Value
 
 	buffer []byte
-	Pos  int
-	Size int
+	Pos    int
+	Size   int
 }
 
 func (s *state) ResolveValue(n string) (Value, error) {
@@ -81,7 +81,7 @@ func (s *state) ResolveValue(n string) (Value, error) {
 }
 
 func (s *state) DeleteValue(n string) {
-	for i := 0; ; i ++ {
+	for i := 0; ; i++ {
 		if i >= len(s.Values) {
 			break
 		}
@@ -104,7 +104,6 @@ func (root *state) decodeBlock(data Block) error {
 				}
 				root.DeleteValue(r.id.Literal)
 			}
-			// ignore for now
 		case SeekStmt:
 			seek, err := strconv.Atoi(n.offset.Literal)
 			if err != nil {
@@ -253,20 +252,23 @@ func evalBinaryExpression(b Binary, root *state) bool {
 		return false
 	}
 
-	var ok bool
+	var (
+		ok  bool
+		cmp = left.Cmp(right)
+	)
 	switch b.operator {
 	case Equal:
-		return left.Equal(right)
+		ok = cmp == 0
 	case NotEq:
-		return !left.Equal(right)
+		ok = cmp != 0
 	case Lesser:
-		return left.Less(right)
+		ok = cmp < 0
 	case Greater:
-		return !(left.Equal(right) || left.Less(right))
+		ok = cmp > 0
 	case LessEq:
-		return left.Equal(right) || left.Less(right)
+		ok = cmp == 0 || cmp < 0
 	case GreatEq:
-		return left.Equal(right) || !left.Less(right)
+		ok = cmp == 0 || cmp > 0
 	default:
 	}
 	return ok

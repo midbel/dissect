@@ -80,8 +80,4 @@ data (
 
   include[second==1] secondary
   include private
-
-  del coarse
-  del fine
-  del src dst
 )

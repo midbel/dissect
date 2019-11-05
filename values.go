@@ -6,9 +6,7 @@ import (
 
 type Value interface {
 	fmt.Stringer
-	Equal(Value) bool
-	Less(Value) bool
-	True() bool
+	Cmp(Value) int
 }
 
 type Boolean struct {
@@ -17,23 +15,19 @@ type Boolean struct {
 	Raw bool
 }
 
+func (b Boolean) Cmp(v Value) int {
+	o, ok := v.(Boolean)
+	if !ok {
+		return -1
+	}
+	if o.Raw == b.Raw {
+		return 0
+	}
+	return -1
+}
+
 func (b Boolean) String() string {
 	return b.Id
-}
-
-func (b Boolean) True() bool {
-	return b.Raw
-}
-
-func (b Boolean) Equal(v Value) bool {
-	if o, ok := v.(Boolean); ok {
-		return o.Raw == b.Raw
-	}
-	return false
-}
-
-func (b Boolean) Less(v Value) bool {
-	return false
 }
 
 type Int struct {
@@ -42,20 +36,18 @@ type Int struct {
 	Raw int64
 }
 
+func (i Int) Cmp(v Value) int {
+	if x := asInt(v); i.Raw > x {
+		return 1
+	} else if i.Raw < x {
+		return -1
+	} else {
+		return 0
+	}
+}
+
 func (i Int) String() string {
 	return i.Id
-}
-
-func (i Int) True() bool {
-	return i.Raw != 0
-}
-
-func (i Int) Equal(v Value) bool {
-	return i.Raw == asInt(v)
-}
-
-func (i Int) Less(v Value) bool {
-	return i.Raw < asInt(v)
 }
 
 type Uint struct {
@@ -64,20 +56,18 @@ type Uint struct {
 	Raw uint64
 }
 
+func (i Uint) Cmp(v Value) int {
+	if x := asUint(v); i.Raw > x {
+		return 1
+	} else if i.Raw < x {
+		return -1
+	} else {
+		return 0
+	}
+}
+
 func (i Uint) String() string {
 	return i.Id
-}
-
-func (i Uint) True() bool {
-	return i.Raw != 0
-}
-
-func (i Uint) Equal(v Value) bool {
-	return i.Raw == asUint(v)
-}
-
-func (i Uint) Less(v Value) bool {
-	return i.Raw < asUint(v)
 }
 
 type Real struct {
@@ -86,20 +76,18 @@ type Real struct {
 	Raw float64
 }
 
+func (r Real) Cmp(v Value) int {
+	if x := asReal(v); r.Raw > x {
+		return 1
+	} else if r.Raw < x {
+		return -1
+	} else {
+		return 0
+	}
+}
+
 func (f Real) String() string {
 	return f.Id
-}
-
-func (f Real) True() bool {
-	return f.Raw != 0
-}
-
-func (f Real) Equal(v Value) bool {
-	return f.Raw == asReal(v)
-}
-
-func (f Real) Less(v Value) bool {
-	return f.Raw < asReal(v)
 }
 
 func asReal(v Value) float64 {
