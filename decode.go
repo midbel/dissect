@@ -64,6 +64,7 @@ type state struct {
 	Block
 	Values []Value
 
+	buffer []byte
 	Pos  int
 	Size int
 }
@@ -78,7 +79,7 @@ func (s state) ResolveValue(n string) (Value, error) {
 	return nil, fmt.Errorf("%s: value not defined", n)
 }
 
-func (root *state) decodeBlock(data Block, buf []byte) error {
+func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case LetStmt:
@@ -101,7 +102,7 @@ func (root *state) decodeBlock(data Block, buf []byte) error {
 			if err != nil {
 				return err
 			}
-			val, err := root.decodeParameter(p, buf)
+			val, err := root.decodeParameter(p)
 			if err != nil {
 				return err
 			}
@@ -109,7 +110,7 @@ func (root *state) decodeBlock(data Block, buf []byte) error {
 				root.Values = append(root.Values, val)
 			}
 		case Parameter:
-			val, err := root.decodeParameter(n, buf)
+			val, err := root.decodeParameter(n)
 			if err != nil {
 				return err
 			}
@@ -117,7 +118,7 @@ func (root *state) decodeBlock(data Block, buf []byte) error {
 				root.Values = append(root.Values, val)
 			}
 		case Include:
-			err := root.decodeInclude(n, buf)
+			err := root.decodeInclude(n)
 			if err != nil && !errors.Is(err, ErrSkip) {
 				return err
 			}
@@ -128,7 +129,7 @@ func (root *state) decodeBlock(data Block, buf []byte) error {
 	return nil
 }
 
-func (root *state) decodeParameter(p Parameter, buf []byte) (Value, error) {
+func (root *state) decodeParameter(p Parameter) (Value, error) {
 	var (
 		bits   = p.numbit()
 		offset = root.Pos % numbit
@@ -147,10 +148,10 @@ func (root *state) decodeParameter(p Parameter, buf []byte) (Value, error) {
 	if bits > 1 {
 		mask = (1 << bits) - 1
 	}
-	if n := len(buf); n < need {
+	if n := root.Size; n < need {
 		return nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
 	}
-	dat := btoi(buf[index:index+need], shift, mask)
+	dat := btoi(root.buffer[index:index+need], shift, mask)
 	switch id := p.id.Literal; p.is() {
 	case 'i': // signed integer
 		raw = Int{
@@ -184,7 +185,7 @@ func (root *state) decodeParameter(p Parameter, buf []byte) (Value, error) {
 	return raw, nil
 }
 
-func (root *state) decodeInclude(n Include, buf []byte) error {
+func (root *state) decodeInclude(n Include) error {
 	if n.Predicate != nil && !evalPredicate(n.Predicate, root) {
 		return ErrSkip
 	}
@@ -199,7 +200,7 @@ func (root *state) decodeInclude(n Include, buf []byte) error {
 		data, err = root.ResolveBlock(n.id.Literal)
 	}
 	if err == nil {
-		err = root.decodeBlock(data, buf)
+		err = root.decodeBlock(data)
 	}
 	return err
 }
