@@ -6,72 +6,114 @@ import (
 	"strings"
 )
 
-type Negate struct {
-	Right Node
+type Literal struct {
+	id Token
 }
 
-func (n Negate) String() string {
-	return fmt.Sprintf("!(%s)", n.Right)
+func (t Literal) String() string {
+	return t.id.Literal
 }
 
-func (n Negate) Pos() Position {
-	return n.Right.Pos()
+func (t Literal) Pos() Position {
+	return t.id.Pos()
 }
 
-type Predicate struct {
-	Left     Node
-	Right    Node
+func (t Literal) exprNode() Node {
+	return t
+}
+
+type Identifier struct {
+	id Token
+}
+
+func (i Identifier) String() string {
+	return i.id.String()
+}
+
+func (i Identifier) Pos() Position {
+	return i.id.Pos()
+}
+
+func (i Identifier) exprNode() Node {
+	return i
+}
+
+type Unary struct {
+	Right Expression
+}
+
+func (u Unary) String() string {
+	return fmt.Sprintf("!(%s)", u.Right)
+}
+
+func (u Unary) Pos() Position {
+	n := u.Right.exprNode()
+	return n.Pos()
+}
+
+func (u Unary) exprNode() Node {
+	return u
+}
+
+type Binary struct {
+	Left     Expression
+	Right    Expression
 	operator rune
 }
 
-func (p Predicate) String() string {
-	var b strings.Builder
+func (b Binary) String() string {
+	var str strings.Builder
 
-	b.WriteRune(lparen)
-	if p.Left == nil {
-		b.WriteString("left")
+	str.WriteRune(lparen)
+	if b.Left == nil {
+		str.WriteString("left")
 	} else {
-		b.WriteString(p.Left.String())
+		str.WriteString(b.Left.String())
 	}
-	b.WriteRune(space)
+	str.WriteRune(space)
 
-	switch p.operator {
+	switch b.operator {
 	case Equal:
-		b.WriteString("==")
+		str.WriteString("==")
 	case NotEq:
-		b.WriteString("!=")
+		str.WriteString("!=")
 	case Lesser:
-		b.WriteString("<")
+		str.WriteString("<")
 	case LessEq:
-		b.WriteString("<=")
+		str.WriteString("<=")
 	case Greater:
-		b.WriteString(">")
+		str.WriteString(">")
 	case GreatEq:
-		b.WriteString(">=")
+		str.WriteString(">=")
 	case Or:
-		b.WriteString("||")
+		str.WriteString("||")
 	case And:
-		b.WriteString("&&")
+		str.WriteString("&&")
 	default:
 		return "<unknown>"
 	}
-	b.WriteRune(space)
-	if p.Right == nil {
-		b.WriteString("right")
+	str.WriteRune(space)
+	if b.Right == nil {
+		str.WriteString("right")
 	} else {
-		b.WriteString(p.Right.String())
+		str.WriteString(b.Right.String())
 	}
-	b.WriteRune(rparen)
+	str.WriteRune(rparen)
 
-	return b.String()
+	return str.String()
 }
 
-func (p Predicate) Pos() Position {
-	return p.Left.Pos()
+func (b Binary) Pos() Position {
+	n := b.Left.exprNode()
+	return n.Pos()
+}
+
+func (b Binary) exprNode() Node {
+	return b
 }
 
 type SeekStmt struct {
-	pos Position
+	pos    Position
 	offset Token
 }
 
@@ -164,9 +206,23 @@ func (r Reference) Pos() Position {
 	return r.id.pos
 }
 
+type Repeat struct {
+	pos    Position
+	repeat Token
+	node   Node
+}
+
+func (r Repeat) Pos() Position {
+	return r.pos
+}
+
+func (r Repeat) String() string {
+	return fmt.Sprintf("repeat(%s)", r.node.String())
+}
+
 type Include struct {
 	pos       Position
-	Predicate Node
+	Predicate Expression
 	node      Node
 }
 

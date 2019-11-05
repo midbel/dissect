@@ -62,6 +62,7 @@ const (
 	kwBlock   = "block"
 	kwImport  = "import"
 	kwInclude = "include"
+	kwRepeat  = "repeat"
 	kwData    = "data"
 	kwDeclare = "declare"
 	kwDefine  = "define"
@@ -69,6 +70,8 @@ const (
 	kwLet     = "let"
 	kwDel     = "del"
 	kwSeek    = "seek"
+	kwTrue    = "true"
+	kwFalse   = "false"
 )
 
 var keywords = []string{
@@ -84,6 +87,12 @@ var keywords = []string{
 	kwLet,
 	kwDel,
 	kwSeek,
+	kwRepeat,
+}
+
+type Expression interface {
+	fmt.Stringer
+	exprNode() Node
 }
 
 type Node interface {
@@ -143,6 +152,10 @@ func (t Token) String() string {
 	default:
 		return string(t.Type)
 	}
+}
+
+func (t Token) isBool() bool {
+	return t.Type == Bool
 }
 
 func (t Token) isNumber() bool {
