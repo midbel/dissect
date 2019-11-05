@@ -68,11 +68,19 @@ block float2 (
  float10[type=f32]
 )
 
+block empty (
+  empty0[size=1]
+  empty1[size=2]
+)
+
 block misc1 (
   param0
   integer4
   float7
   boolean0
+
+  include empty
+  include[boolean0==true] empty
 )
 
 data (

@@ -461,25 +461,11 @@ func (p *Parser) parseBlock() (Node, error) {
 	b := emptyBlock(p.curr)
 
 	p.nextToken()
-	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("parseBlock: expected (, got %s", p.curr)
+	ns, err := p.parseStatements()
+	if err != nil {
+		return nil, err
 	}
-	p.nextToken()
-	for !p.isDone() {
-		p.skipComment()
-		if p.curr.Type == rparen {
-			break
-		}
-		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("parseBlock: unexpected token %s", p.curr)
-		}
-		n, err := p.parseField()
-		if err != nil {
-			return nil, err
-		}
-		b.nodes = append(b.nodes, n)
-	}
-	p.nextToken()
+	b.nodes = ns
 	return b, nil
 }
 
