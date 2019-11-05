@@ -70,7 +70,7 @@ type state struct {
 	Size int
 }
 
-func (s state) ResolveValue(n string) (Value, error) {
+func (s *state) ResolveValue(n string) (Value, error) {
 	for i := len(s.Values) - 1; i >= 0; i-- {
 		v := s.Values[i]
 		if v.String() == n {
@@ -80,12 +80,30 @@ func (s state) ResolveValue(n string) (Value, error) {
 	return nil, fmt.Errorf("%s: value not defined", n)
 }
 
+func (s *state) DeleteValue(n string) {
+	for i := 0; ; i ++ {
+		if i >= len(s.Values) {
+			break
+		}
+		if v := s.Values[i]; v.String() == n {
+			s.Values = append(s.Values[:i], s.Values[i+1:]...)
+		}
+	}
+}
+
 func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case LetStmt:
 			// ignore for now
 		case DelStmt:
+			for _, n := range n.nodes {
+				r, ok := n.(Reference)
+				if !ok {
+					continue
+				}
+				root.DeleteValue(r.id.Literal)
+			}
 			// ignore for now
 		case SeekStmt:
 			seek, err := strconv.Atoi(n.offset.Literal)
