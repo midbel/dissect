@@ -178,7 +178,7 @@ func (s *Scanner) scanIdent(tok *Token) {
 
 	s.unreadByte()
 
-	if tok.Literal == "true" || tok.Literal == "false" {
+	if tok.Literal == kwTrue || tok.Literal == kwFalse {
 		tok.Type = Bool
 		return
 	}

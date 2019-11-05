@@ -44,8 +44,12 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%s)", indent)
 	case SeekStmt:
 		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset.Literal, n.Pos())
+	case Repeat:
+		fmt.Printf("%srepeat(repeat=%s, pos=%s) (\n", indent, n.repeat.Literal, n.Pos())
+		dumpNode(n.node, level+1)
+		fmt.Printf("%s)", indent)
 	case Include:
-		predicate := "true"
+		predicate := kwTrue
 		if n.Predicate != nil {
 			predicate = n.Predicate.String()
 		}

@@ -79,69 +79,6 @@ func Merge(r io.Reader) (Node, error) {
 	return merge(dat, root)
 }
 
-func merge(dat, root Block) (Node, error) {
-	var nodes []Node
-	for _, n := range dat.nodes {
-		switch n := n.(type) {
-		case Parameter:
-			nodes = append(nodes, n)
-		case LetStmt:
-			nodes = append(nodes, n)
-		case DelStmt:
-			nodes = append(nodes, n)
-		case SeekStmt:
-			nodes = append(nodes, n)
-		case Reference:
-			p, err := root.ResolveParameter(n.id.Literal)
-			if err != nil {
-				return nil, err
-			}
-			nodes = append(nodes, p)
-		case Include:
-			b, err := mergeInclude(n, root)
-			if err != nil {
-				return nil, err
-			}
-			if x, ok := b.(Block); ok {
-				nodes = append(nodes, x.nodes...)
-			} else {
-				nodes = append(nodes, b)
-			}
-		default:
-			return nil, fmt.Errorf("unexpected node type %T", n)
-		}
-	}
-	dat = Block{
-		id:    dat.id,
-		nodes: nodes,
-	}
-	return dat, nil
-}
-
-func mergeInclude(i Include, root Block) (Node, error) {
-	var (
-		err error
-		dat Block
-	)
-	switch n := i.node.(type) {
-	case Reference:
-		dat, err = root.ResolveBlock(n.id.Literal)
-		if err != nil {
-			return nil, err
-		}
-	case Block:
-		dat = n
-	}
-	if i.node, err = merge(dat, root); err != nil {
-		return nil, err
-	}
-	if i.Predicate == nil {
-		return i.node, err
-	} else {
-		return i, err
-	}
-}
-
 func (p *Parser) Parse() (Node, error) {
 	var root Block
 
@@ -201,6 +138,8 @@ func (p *Parser) parseStatements() ([]Node, error) {
 				node, err = p.parseDel()
 			} else if lit == kwSeek {
 				node, err = p.parseSeek()
+			} else if lit == kwRepeat {
+				node, err = p.parseRepeat()
 			} else {
 				err = fmt.Errorf("parseStatements: unexpected keyword %s", p.curr)
 			}
@@ -218,6 +157,40 @@ func (p *Parser) parseStatements() ([]Node, error) {
 	}
 	p.nextToken()
 	return ns, nil
+}
+
+func (p *Parser) parseRepeat() (Node, error) {
+	r := Repeat{pos: p.curr.Pos()}
+	p.nextToken()
+	if !(p.curr.isNumber() || p.curr.isIdent()) {
+		return nil, fmt.Errorf("parseRepeat: unexpected token %s", TokenString(p.curr))
+	}
+	r.repeat = p.curr
+	p.nextToken()
+
+	var err error
+	switch p.curr.Type {
+	case lparen:
+		pos := p.curr.Pos()
+		if ns, e := p.parseStatements(); e == nil {
+			tok := Token{
+				Literal: kwInline,
+				Type:    Keyword,
+				pos:     pos,
+			}
+			r.node = Block{id: tok, nodes: ns}
+		} else {
+			err = e
+		}
+	case Ident, Text:
+		r.node = Reference{id: p.curr}
+	default:
+		err = fmt.Errorf("parseRepeat: unexpected token %s", TokenString(p.curr))
+	}
+	if err == nil {
+		p.nextToken()
+	}
+	return r, err
 }
 
 func (p *Parser) parseSeek() (Node, error) {
@@ -275,23 +248,23 @@ func (p *Parser) parseData() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parsePredicate() (Node, error) {
+func (p *Parser) parsePredicate() (Expression, error) {
 	p.nextToken()
-	node, err := p.parseExpression(bindLowest)
+	expr, err := p.parseExpression(bindLowest)
 	if err == nil {
 		p.nextToken()
 	}
-	return node, err
+	return expr, err
 }
 
-func (p *Parser) parseExpression(pow int) (Node, error) {
+func (p *Parser) parseExpression(pow int) (Expression, error) {
 	expr, err := p.parsePrefix()
 	if err != nil {
 		return nil, err
 	}
 	for p.peek.Type != rsquare && pow < bindPower(p.peek) {
 		p.nextToken()
-		n, err := p.parseConditional(expr)
+		n, err := p.parseInfix(expr)
 		if err != nil {
 			return nil, err
 		}
@@ -303,8 +276,8 @@ func (p *Parser) parseExpression(pow int) (Node, error) {
 	return expr, nil
 }
 
-func (p *Parser) parsePrefix() (Node, error) {
-	var expr Node
+func (p *Parser) parsePrefix() (Expression, error) {
+	var expr Expression
 	switch p.curr.Type {
 	case Not:
 		p.nextToken()
@@ -312,7 +285,7 @@ func (p *Parser) parsePrefix() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		expr = Negate{Right: right}
+		expr = Unary{Right: right}
 	case lparen:
 		p.nextToken()
 		n, err := p.parseExpression(bindLowest)
@@ -325,14 +298,18 @@ func (p *Parser) parsePrefix() (Node, error) {
 			p.nextToken()
 		}
 		expr = n
+	case Integer, Float, Bool:
+		expr = Literal{id: p.curr}
+	case Ident, Text:
+		expr = Identifier{id: p.curr}
 	default:
-		expr = p.curr
+		return nil, fmt.Errorf("parseExpression: unexpected token type %s", TokenString(p.curr))
 	}
 	return expr, nil
 }
 
-func (p *Parser) parseConditional(left Node) (Node, error) {
-	expr := Predicate{
+func (p *Parser) parseInfix(left Expression) (Expression, error) {
+	expr := Binary{
 		Left:     left,
 		operator: p.curr.Type,
 	}
@@ -363,7 +340,12 @@ func (p *Parser) parseInclude() (Node, error) {
 		i.node = Reference{id: p.curr}
 	case lparen:
 		if ns, e := p.parseStatements(); e == nil {
-			i.node = Block{id: Token{Literal: kwInline, Type: Keyword, pos: i.Pos()}, nodes: ns}
+			tok := Token{
+				Literal: kwInline,
+				Type:    Keyword,
+				pos:     i.Pos(),
+			}
+			i.node = Block{id: tok, nodes: ns}
 		} else {
 			err = e
 		}
@@ -411,25 +393,25 @@ func (p *Parser) parseProperties() (map[string]Token, error) {
 	for p.curr.Type != rsquare {
 		p.nextToken()
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 		key := p.curr
 		p.nextToken()
 		if p.curr.Type != Assign {
-			return nil, fmt.Errorf("parseProperties: expected =, got %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 		p.nextToken()
 		switch p.curr.Type {
-		case Ident, Text, Integer, Bool, Keyword:
+		case Ident, Text, Integer, Bool:
 			props[key.Literal] = p.curr
 		default:
-			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 		p.nextToken()
 		switch p.curr.Type {
 		case rsquare, comma:
 		default:
-			return nil, fmt.Errorf("parseProperties: unexpected token %s", p.curr)
+			return nil, fmt.Errorf("parseProperties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 	}
 	p.nextToken()
@@ -604,4 +586,67 @@ func (p *Parser) skipToken(typ rune) {
 func (p *Parser) nextToken() {
 	p.curr = p.peek
 	p.peek = p.scan.Scan()
+}
+
+func merge(dat, root Block) (Node, error) {
+	var nodes []Node
+	for _, n := range dat.nodes {
+		switch n := n.(type) {
+		case Parameter:
+			nodes = append(nodes, n)
+		case LetStmt:
+			nodes = append(nodes, n)
+		case DelStmt:
+			nodes = append(nodes, n)
+		case SeekStmt:
+			nodes = append(nodes, n)
+		case Reference:
+			p, err := root.ResolveParameter(n.id.Literal)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, p)
+		case Include:
+			b, err := mergeInclude(n, root)
+			if err != nil {
+				return nil, err
+			}
+			if x, ok := b.(Block); ok {
+				nodes = append(nodes, x.nodes...)
+			} else {
+				nodes = append(nodes, b)
+			}
+		default:
+			return nil, fmt.Errorf("unexpected node type %T", n)
+		}
+	}
+	dat = Block{
+		id:    dat.id,
+		nodes: nodes,
+	}
+	return dat, nil
+}
+
+func mergeInclude(i Include, root Block) (Node, error) {
+	var (
+		err error
+		dat Block
+	)
+	switch n := i.node.(type) {
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return nil, err
+		}
+	case Block:
+		dat = n
+	}
+	if i.node, err = merge(dat, root); err != nil {
+		return nil, err
+	}
+	if i.Predicate == nil {
+		return i.node, err
+	} else {
+		return i, err
+	}
 }
