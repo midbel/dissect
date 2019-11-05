@@ -45,7 +45,7 @@ define (
 )
 
 block pid (
-  version[numbit=3, expect=Version]
+  version[numbit=3]
   type[numbit=1, transform=Type]
   second[numbit=1]
   apid[numbit=11, type=u16]
