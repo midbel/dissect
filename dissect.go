@@ -172,12 +172,7 @@ func (t Token) isLogical() bool {
 
 func (t Token) isComparison() bool {
 	switch t.Type {
-	case Equal:
-	case NotEq:
-	case Lesser:
-	case LessEq:
-	case Greater:
-	case GreatEq:
+	case Equal, NotEq, Lesser, LessEq, Greater, GreatEq:
 	default:
 		return false
 	}
