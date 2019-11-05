@@ -53,7 +53,8 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 		Block: d.root,
 		Size:  len(buf),
 	}
-	err := s.decodeBlock(d.data, buf)
+	s.buffer = append(s.buffer, buf...)
+	err := s.decodeBlock(d.data)
 	if err != nil && !errors.Is(err, ErrDone) {
 		return nil, err
 	}
