@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrSkip = errors.New("skip block")
+	ErrDone = errors.New("done")
 )
 
 const numbit = 8
@@ -48,14 +49,23 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 }
 
 func (d Decoder) Decode(buf []byte) ([]Value, error) {
-	s := state{Block: d.root}
-	_, err := decodeBlock(d.data, &s, buf)
-	return s.Values, err
+	s := state{
+		Block: d.root,
+		Size:  len(buf),
+	}
+	err := decodeBlock(d.data, &s, buf)
+	if err != nil && !errors.Is(err, ErrDone) {
+		return nil, err
+	}
+	return s.Values, nil
 }
 
 type state struct {
 	Block
 	Values []Value
+
+	Pos  int
+	Size int
 }
 
 func (s state) ResolveValue(n string) (Value, error) {
@@ -68,13 +78,8 @@ func (s state) ResolveValue(n string) (Value, error) {
 	return nil, fmt.Errorf("%s: value not defined", n)
 }
 
-func decodeBlock(data Block, root *state, buf []byte) (int, error) {
-	var pos int
+func decodeBlock(data Block, root *state, buf []byte) error {
 	for _, n := range data.nodes {
-		ix, offset := pos/numbit, pos%numbit
-		if ix >= len(buf) {
-			break
-		}
 		switch n := n.(type) {
 		case LetStmt:
 			// ignore for now
@@ -83,60 +88,58 @@ func decodeBlock(data Block, root *state, buf []byte) (int, error) {
 		case SeekStmt:
 			seek, err := strconv.Atoi(n.offset.Literal)
 			if err != nil {
-				return pos, fmt.Errorf("invalid seek value given")
+				return fmt.Errorf("invalid seek value given")
 			}
-			pos += seek
-			if pos < 0 || pos >= len(buf) {
-				return pos, fmt.Errorf("seek outside of buffer range")
+			root.Pos += seek
+			if root.Pos < 0 || root.Pos >= root.Size {
+				return fmt.Errorf("seek outside of buffer range")
 			}
 		case Repeat:
 			// ignore for now
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)
 			if err != nil {
-				return pos, err
+				return err
 			}
-			bits, val, err := decodeParameter(p, root, offset, buf[ix:])
+			val, err := decodeParameter(p, root, buf)
 			if err != nil {
-				return pos, err
+				return err
 			}
-			// val.Pos = pos + p.offset()
-
 			if val != nil {
 				root.Values = append(root.Values, val)
 			}
-			pos += bits
 		case Parameter:
-			bits, val, err := decodeParameter(n, root, offset, buf[ix:])
+			val, err := decodeParameter(n, root, buf)
 			if err != nil {
-				return pos, err
+				return err
 			}
-			// val.Pos = pos + n.offset()
-
 			if val != nil {
 				root.Values = append(root.Values, val)
 			}
-			pos += bits
 		case Include:
-			bits, vs, err := decodeInclude(n, root, buf[ix:])
-
+			vs, err := decodeInclude(n, root, buf)
 			if err != nil && !errors.Is(err, ErrSkip) {
-				return pos, err
+				return err
 			}
 			if len(vs) > 0 {
 				root.Values = append(root.Values, vs...)
 			}
-			pos += bits
 		default:
-			return pos, fmt.Errorf("unexpected node type %T", n)
+			return fmt.Errorf("unexpected node type %T", n)
 		}
 	}
-	return pos, nil
+	return nil
 }
 
-func decodeParameter(p Parameter, root *state, offset int, buf []byte) (int, Value, error) {
-	bits := p.numbit()
-	offset += p.offset()
+func decodeParameter(p Parameter, root *state, buf []byte) (Value, error) {
+	var (
+		bits   = p.numbit()
+		offset = root.Pos % numbit
+		index  = root.Pos / numbit
+	)
+	if index >= root.Size {
+		return nil, ErrDone
+	}
 
 	var (
 		need  = numbytes(bits)
@@ -148,43 +151,47 @@ func decodeParameter(p Parameter, root *state, offset int, buf []byte) (int, Val
 		mask = (1 << bits) - 1
 	}
 	if n := len(buf); n < need {
-		return bits, nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
+		return nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
 	}
-	dat := btoi(buf[:need], shift, mask)
+	dat := btoi(buf[index:index+need], shift, mask)
 	switch id := p.id.Literal; p.is() {
 	case 'i': // signed integer
-		// raw = int64(dat)
 		raw = Int{
 			Id:  id,
+			Pos: root.Pos,
 			Raw: int64(dat),
 		}
 	case 'u': // unsigned integer
 		raw = Uint{
 			Id:  id,
+			Pos: root.Pos,
 			Raw: dat,
 		}
 	case 'f': // float
 		// raw = math.Float64frombits(dat)
 		raw = Real{
 			Id:  id,
+			Pos: root.Pos,
 			Raw: math.Float64frombits(dat),
 		}
 	case 'b': // boolean
 		raw = Boolean{
 			Id:  id,
+			Pos: root.Pos,
 			Raw: dat != 0,
 		}
 	default:
+		return nil, fmt.Errorf("unsupported type: %c", p.is())
 	}
-	return bits, raw, nil
+	root.Pos += bits
+	return raw, nil
 }
 
-func decodeInclude(n Include, root *state, buf []byte) (int, []Value, error) {
+func decodeInclude(n Include, root *state, buf []byte) ([]Value, error) {
 	if n.Predicate != nil && !evalPredicate(n.Predicate, root) {
-		return 0, nil, ErrSkip
+		return nil, ErrSkip
 	}
 	var (
-		bits   int
 		data   Block
 		err    error
 		values []Value
@@ -196,9 +203,9 @@ func decodeInclude(n Include, root *state, buf []byte) (int, []Value, error) {
 		data, err = root.ResolveBlock(n.id.Literal)
 	}
 	if err == nil {
-		bits, err = decodeBlock(data, root, buf)
+		err = decodeBlock(data, root, buf)
 	}
-	return bits, values, err
+	return values, err
 }
 
 func evalPredicate(e Expression, root *state) bool {
