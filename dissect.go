@@ -68,6 +68,7 @@ const (
 	kwInline  = "inline"
 	kwLet     = "let"
 	kwDel     = "del"
+	kwSeek    = "seek"
 )
 
 var keywords = []string{
@@ -82,6 +83,7 @@ var keywords = []string{
 	kwDefine,
 	kwLet,
 	kwDel,
+	kwSeek,
 }
 
 type Node interface {
@@ -141,6 +143,10 @@ func (t Token) String() string {
 	default:
 		return string(t.Type)
 	}
+}
+
+func (t Token) isNumber() bool {
+	return t.Type == Integer || t.Type == Float
 }
 
 func (t Token) isIdent() bool {

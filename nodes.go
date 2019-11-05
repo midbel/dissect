@@ -70,6 +70,19 @@ func (p Predicate) Pos() Position {
 	return p.Left.Pos()
 }
 
+type SeekStmt struct {
+	pos Position
+	offset Token
+}
+
+func (s SeekStmt) String() string {
+	return "seek"
+}
+
+func (s SeekStmt) Pos() Position {
+	return s.pos
+}
+
 type DelStmt struct {
 	pos   Position
 	nodes []Node

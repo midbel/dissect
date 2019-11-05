@@ -66,6 +66,82 @@ func Parse(r io.Reader) (Node, error) {
 	return p.Parse()
 }
 
+func Merge(r io.Reader) (Node, error) {
+	n, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	root := n.(Block)
+	dat, err := root.ResolveData()
+	if err != nil {
+		return nil, err
+	}
+	return merge(dat, root)
+}
+
+func merge(dat, root Block) (Node, error) {
+	var nodes []Node
+	for _, n := range dat.nodes {
+		switch n := n.(type) {
+		case Parameter:
+			nodes = append(nodes, n)
+		case LetStmt:
+			nodes = append(nodes, n)
+		case DelStmt:
+			nodes = append(nodes, n)
+		case SeekStmt:
+			nodes = append(nodes, n)
+		case Reference:
+			p, err := root.ResolveParameter(n.id.Literal)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, p)
+		case Include:
+			b, err := mergeInclude(n, root)
+			if err != nil {
+				return nil, err
+			}
+			if x, ok := b.(Block); ok {
+				nodes = append(nodes, x.nodes...)
+			} else {
+				nodes = append(nodes, b)
+			}
+		default:
+			return nil, fmt.Errorf("unexpected node type %T", n)
+		}
+	}
+	dat = Block{
+		id:    dat.id,
+		nodes: nodes,
+	}
+	return dat, nil
+}
+
+func mergeInclude(i Include, root Block) (Node, error) {
+	var (
+		err error
+		dat Block
+	)
+	switch n := i.node.(type) {
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return nil, err
+		}
+	case Block:
+		dat = n
+	}
+	if i.node, err = merge(dat, root); err != nil {
+		return nil, err
+	}
+	if i.Predicate == nil {
+		return i.node, err
+	} else {
+		return i, err
+	}
+}
+
 func (p *Parser) Parse() (Node, error) {
 	var root Block
 
@@ -123,6 +199,8 @@ func (p *Parser) parseStatements() ([]Node, error) {
 				node, err = p.parseLet()
 			} else if lit == kwDel {
 				node, err = p.parseDel()
+			} else if lit == kwSeek {
+				node, err = p.parseSeek()
 			} else {
 				err = fmt.Errorf("parseStatements: unexpected keyword %s", p.curr)
 			}
@@ -140,6 +218,17 @@ func (p *Parser) parseStatements() ([]Node, error) {
 	}
 	p.nextToken()
 	return ns, nil
+}
+
+func (p *Parser) parseSeek() (Node, error) {
+	k := SeekStmt{pos: p.curr.Pos()}
+	p.nextToken()
+	if !p.curr.isNumber() {
+		return nil, fmt.Errorf("parseSeek: expected number, got %s", TokenString(p.curr))
+	}
+	k.offset = p.curr
+	p.nextToken()
+	return k, nil
 }
 
 func (p *Parser) parseLet() (Node, error) {

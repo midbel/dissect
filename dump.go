@@ -35,13 +35,15 @@ func dumpNode(n Node, level int) error {
 		}
 		fmt.Printf("%s)", indent)
 	case LetStmt:
-		fmt.Printf("%slet(name=%s, pos=%s)\n", indent, n.id.Literal, n.Pos())
+		fmt.Printf("%slet(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
 	case DelStmt:
 		fmt.Printf("%sdel(pos=%s) (\n", indent, n.Pos())
 		for _, n := range sortNodes(n.nodes) {
 			dumpNode(n, level+1)
 		}
 		fmt.Printf("%s)", indent)
+	case SeekStmt:
+		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset.Literal, n.Pos())
 	case Include:
 		predicate := "true"
 		if n.Predicate != nil {
