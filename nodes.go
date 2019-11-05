@@ -344,6 +344,23 @@ func (b Block) ResolveParameter(param string) (Parameter, error) {
 	return Parameter{}, fmt.Errorf("%s: parameter not defined")
 }
 
+func (b Block) ResolveConstant(cst string) (Constant, error) {
+	def, err := b.ResolveBlock(kwDefine)
+	if err != nil {
+		return Constant{}, err
+	}
+	for _, n := range def.nodes {
+		c, ok := n.(Constant)
+		if !ok {
+			continue
+		}
+		if c.id.Literal == cst {
+			return c, nil
+		}
+	}
+	return Constant{}, fmt.Errorf("%s: constant not defined")
+}
+
 func (b Block) ResolvePair(pair string) (Pair, error) {
 	for _, n := range b.nodes {
 		p, ok := n.(Pair)

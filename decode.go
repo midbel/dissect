@@ -1,9 +1,15 @@
 package dissect
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
+	"strconv"
+)
+
+var (
+	ErrSkip = errors.New("skip block")
 )
 
 const numbit = 8
@@ -22,6 +28,7 @@ type Decoder struct {
 
 func NewDecoder(r io.Reader) (*Decoder, error) {
 	n, err := Parse(r)
+	// n, err := Merge(r)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +63,21 @@ func decodeBlock(data, root Block, buf []byte) (int, []Value, error) {
 			break
 		}
 		switch n := n.(type) {
+		case LetStmt:
+			// ignore for now
+		case DelStmt:
+			// ignore for now
+		case SeekStmt:
+			seek, err := strconv.Atoi(n.offset.Literal)
+			if err != nil {
+				return pos, nil, fmt.Errorf("invalid seek value given")
+			}
+			pos += seek
+			if pos < 0 || pos >= len(buf) {
+				return pos, nil, fmt.Errorf("seek outside of buffer range")
+			}
+		case Repeat:
+			// ignore for now
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)
 			if err != nil {
@@ -80,10 +102,13 @@ func decodeBlock(data, root Block, buf []byte) (int, []Value, error) {
 			pos += bits
 		case Include:
 			bits, vs, err := decodeInclude(n, root, buf[ix:])
-			if err != nil {
+
+			if err != nil && !errors.Is(err, ErrSkip) {
 				return pos, nil, err
 			}
-			values = append(values, vs...)
+			if len(vs) > 0 {
+				values = append(values, vs...)
+			}
 			pos += bits
 		default:
 			return pos, nil, fmt.Errorf("unexpected node type %T", n)
@@ -135,8 +160,8 @@ func decodeParameter(p Parameter, root Block, offset int, buf []byte) (int, Valu
 }
 
 func decodeInclude(n Include, root Block, buf []byte) (int, []Value, error) {
-	if n.Predicate != nil {
-
+	if n.Predicate != nil && !evalPredicate(n.Predicate, root) {
+		return 0, nil, ErrSkip
 	}
 	var (
 		bits   int
@@ -154,6 +179,74 @@ func decodeInclude(n Include, root Block, buf []byte) (int, []Value, error) {
 		bits, values, err = decodeBlock(data, root, buf)
 	}
 	return bits, values, err
+}
+
+func evalPredicate(e Expression, root Block) bool {
+	switch e := e.(type) {
+	case Binary:
+		return evalBinaryExpression(e, root)
+	case Unary:
+		return !evalPredicate(e, root)
+	default:
+		return false
+	}
+}
+
+func evalBinaryExpression(b Binary, root Block) bool {
+	switch b.operator {
+	default:
+	case And:
+		return evalPredicate(b.Left, root) && evalPredicate(b.Right, root)
+	case Or:
+		return evalPredicate(b.Left, root) || evalPredicate(b.Right, root)
+	}
+
+	left, err := resolveValue(b.Left, root)
+	if err != nil {
+		return false
+	}
+	right, err := resolveValue(b.Right, root)
+	if err != nil {
+		return false
+	}
+	_, _ = left, right
+
+	var ok bool
+	switch b.operator {
+	case Equal:
+	case NotEq:
+	case Lesser:
+	case Greater:
+	case LessEq:
+	case GreatEq:
+	default:
+	}
+	return ok
+}
+
+func resolveValue(e Expression, root Block) (Value, error) {
+	var (
+		v   Value
+		err error
+	)
+	switch e := e.(type) {
+	default:
+		err = fmt.Errorf("unexpected expression type %T", e)
+	case Literal:
+		if e.id.Type == Float {
+			v.Raw, err = strconv.ParseFloat(e.id.Literal, 64)
+		} else if e.id.Type == Integer {
+			v.Raw, err = strconv.ParseInt(e.id.Literal, 0, 64)
+		} else if e.id.Type == Bool {
+			v.Raw, err = strconv.ParseBool(e.id.Literal)
+		} else {
+			err = fmt.Errorf("unexpected token type %s", TokenString(e.id))
+		}
+		v.Name = "anonymous"
+	case Identifier:
+		v.Name = e.id.Literal
+	}
+	return v, err
 }
 
 func btoi(buf []byte, shift, mask int) uint64 {
