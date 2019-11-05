@@ -15,6 +15,7 @@ const (
 	Bool
 	Comment
 	Assign
+	Cast
 	Equal
 	NotEq
 	Lesser
@@ -72,6 +73,7 @@ const (
 	kwSeek    = "seek"
 	kwTrue    = "true"
 	kwFalse   = "false"
+	kwAno     = "anonymous"
 )
 
 var keywords = []string{
@@ -147,6 +149,8 @@ func (t Token) String() string {
 		return ">"
 	case GreatEq:
 		return ">="
+	case Cast:
+		return "cast"
 	case Ident, Float, Integer, Bool, Keyword:
 		return t.Literal
 	default:
@@ -221,6 +225,8 @@ func TokenString(t Token) string {
 		return "<greater>"
 	case GreatEq:
 		return "<greateq>"
+	case Cast:
+		return "<cast>"
 	case Newline:
 		return "<newline>"
 	case Illegal:
