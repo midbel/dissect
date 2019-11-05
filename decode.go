@@ -53,7 +53,7 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 		Block: d.root,
 		Size:  len(buf),
 	}
-	err := decodeBlock(d.data, &s, buf)
+	err := s.decodeBlock(d.data, buf)
 	if err != nil && !errors.Is(err, ErrDone) {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (s state) ResolveValue(n string) (Value, error) {
 	return nil, fmt.Errorf("%s: value not defined", n)
 }
 
-func decodeBlock(data Block, root *state, buf []byte) error {
+func (root *state) decodeBlock(data Block, buf []byte) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case LetStmt:
@@ -101,7 +101,7 @@ func decodeBlock(data Block, root *state, buf []byte) error {
 			if err != nil {
 				return err
 			}
-			val, err := decodeParameter(p, root, buf)
+			val, err := root.decodeParameter(p, buf)
 			if err != nil {
 				return err
 			}
@@ -109,7 +109,7 @@ func decodeBlock(data Block, root *state, buf []byte) error {
 				root.Values = append(root.Values, val)
 			}
 		case Parameter:
-			val, err := decodeParameter(n, root, buf)
+			val, err := root.decodeParameter(n, buf)
 			if err != nil {
 				return err
 			}
@@ -117,12 +117,9 @@ func decodeBlock(data Block, root *state, buf []byte) error {
 				root.Values = append(root.Values, val)
 			}
 		case Include:
-			vs, err := decodeInclude(n, root, buf)
+			err := root.decodeInclude(n, buf)
 			if err != nil && !errors.Is(err, ErrSkip) {
 				return err
-			}
-			if len(vs) > 0 {
-				root.Values = append(root.Values, vs...)
 			}
 		default:
 			return fmt.Errorf("unexpected node type %T", n)
@@ -131,7 +128,7 @@ func decodeBlock(data Block, root *state, buf []byte) error {
 	return nil
 }
 
-func decodeParameter(p Parameter, root *state, buf []byte) (Value, error) {
+func (root *state) decodeParameter(p Parameter, buf []byte) (Value, error) {
 	var (
 		bits   = p.numbit()
 		offset = root.Pos % numbit
@@ -187,14 +184,13 @@ func decodeParameter(p Parameter, root *state, buf []byte) (Value, error) {
 	return raw, nil
 }
 
-func decodeInclude(n Include, root *state, buf []byte) ([]Value, error) {
+func (root *state) decodeInclude(n Include, buf []byte) error {
 	if n.Predicate != nil && !evalPredicate(n.Predicate, root) {
-		return nil, ErrSkip
+		return ErrSkip
 	}
 	var (
-		data   Block
-		err    error
-		values []Value
+		data Block
+		err  error
 	)
 	switch n := n.node.(type) {
 	case Block:
@@ -203,9 +199,9 @@ func decodeInclude(n Include, root *state, buf []byte) ([]Value, error) {
 		data, err = root.ResolveBlock(n.id.Literal)
 	}
 	if err == nil {
-		err = decodeBlock(data, root, buf)
+		err = root.decodeBlock(data, buf)
 	}
-	return values, err
+	return err
 }
 
 func evalPredicate(e Expression, root *state) bool {
