@@ -99,7 +99,7 @@ func (p *Parser) Parse() (Node, error) {
 	return root, nil
 }
 
-func (p *Parser) parseStatements(flat bool) ([]Node, error) {
+func (p *Parser) parseStatements() ([]Node, error) {
 	if p.curr.Type != lparen {
 		return nil, fmt.Errorf("parseStatements: expected (, got %s", p.curr)
 	}
@@ -117,8 +117,12 @@ func (p *Parser) parseStatements(flat bool) ([]Node, error) {
 		)
 		switch p.curr.Type {
 		case Keyword:
-			if lit := p.curr.Literal; lit == kwInclude && !flat {
+			if lit := p.curr.Literal; lit == kwInclude {
 				node, err = p.parseInclude()
+			} else if lit == kwLet {
+				node, err = p.parseLet()
+			} else if lit == kwDel {
+				node, err = p.parseDel()
 			} else {
 				err = fmt.Errorf("parseStatements: unexpected keyword %s", p.curr)
 			}
@@ -138,11 +142,43 @@ func (p *Parser) parseStatements(flat bool) ([]Node, error) {
 	return ns, nil
 }
 
+func (p *Parser) parseLet() (Node, error) {
+	p.nextToken()
+	n := LetStmt{id: p.curr}
+	p.nextToken()
+	if p.curr.Type != Assign {
+		return nil, fmt.Errorf("parseLet: expect =, got %s", TokenString(p.curr))
+	}
+	p.nextToken()
+	for !p.isDone() {
+		if p.curr.Type == Newline {
+			break
+		}
+		p.nextToken()
+	}
+	return n, nil
+}
+
+func (p *Parser) parseDel() (Node, error) {
+	d := DelStmt{pos: p.curr.Pos()}
+	for !p.isDone() {
+		p.nextToken()
+		if p.curr.Type == Newline {
+			break
+		}
+		if !p.curr.isIdent() {
+			return nil, fmt.Errorf("parseDel: expected ident, got %s", TokenString(p.curr))
+		}
+		d.nodes = append(d.nodes, Reference{id: p.curr})
+	}
+	return d, nil
+}
+
 func (p *Parser) parseData() (Node, error) {
 	b := emptyBlock(p.curr)
 	p.nextToken()
 
-	ns, err := p.parseStatements(false)
+	ns, err := p.parseStatements()
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +273,7 @@ func (p *Parser) parseInclude() (Node, error) {
 	case Ident, Text:
 		i.node = Reference{id: p.curr}
 	case lparen:
-		if ns, e := p.parseStatements(false); e == nil {
+		if ns, e := p.parseStatements(); e == nil {
 			i.node = Block{id: Token{Literal: kwInline, Type: Keyword, pos: i.Pos()}, nodes: ns}
 		} else {
 			err = e
@@ -290,7 +326,7 @@ func (p *Parser) parseProperties() (map[string]Token, error) {
 		}
 		key := p.curr
 		p.nextToken()
-		if p.curr.Type != equal {
+		if p.curr.Type != Assign {
 			return nil, fmt.Errorf("parseProperties: expected =, got %s", p.curr)
 		}
 		p.nextToken()
@@ -341,7 +377,7 @@ func (p *Parser) parseAssignment() (Node, error) {
 	node := Constant{id: p.curr}
 
 	p.nextToken()
-	if p.curr.Type != equal {
+	if p.curr.Type != Assign {
 		return nil, fmt.Errorf("parseAssignment: expected =, got %s", p.curr)
 	}
 	p.nextToken()

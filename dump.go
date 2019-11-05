@@ -23,13 +23,21 @@ func dumpNode(n Node, level int) error {
 	indent := strings.Repeat(" ", level*2)
 	switch n := n.(type) {
 	case Block:
-		fmt.Printf("%s%s(pos=%s, type=%s) (\n", indent, n.String(), n.Pos(), n.blockName())
+		fmt.Printf("%s%s(type=%s, pos=%s) (\n", indent, n.String(), n.Pos(), n.blockName())
 		for _, n := range sortNodes(n.nodes) {
 			dumpNode(n, level+1)
 		}
 		fmt.Printf("%s)", indent)
 	case Pair:
 		fmt.Printf("%s%s(name=%s, pos=%s) (\n", indent, n.kind.Literal, n.id.Literal, n.Pos())
+		for _, n := range sortNodes(n.nodes) {
+			dumpNode(n, level+1)
+		}
+		fmt.Printf("%s)", indent)
+	case LetStmt:
+		fmt.Printf("%slet(name=%s, pos=%s)\n", indent, n.id.Literal, n.Pos())
+	case DelStmt:
+		fmt.Printf("%sdel(pos=%s) (\n", indent, n.Pos())
 		for _, n := range sortNodes(n.nodes) {
 			dumpNode(n, level+1)
 		}

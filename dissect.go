@@ -67,6 +67,7 @@ const (
 	kwDefine  = "define"
 	kwInline  = "inline"
 	kwLet     = "let"
+	kwDel     = "del"
 )
 
 var keywords = []string{
@@ -80,6 +81,7 @@ var keywords = []string{
 	kwDeclare,
 	kwDefine,
 	kwLet,
+	kwDel,
 }
 
 type Node interface {
@@ -118,7 +120,7 @@ func (t Token) String() string {
 		return "&&"
 	case Or:
 		return "||"
-	case Assgign:
+	case Assign:
 		return "="
 	case Not:
 		return "!"

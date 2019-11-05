@@ -70,6 +70,32 @@ func (p Predicate) Pos() Position {
 	return p.Left.Pos()
 }
 
+type DelStmt struct {
+	pos   Position
+	nodes []Node
+}
+
+func (d DelStmt) String() string {
+	return "delete"
+}
+
+func (d DelStmt) Pos() Position {
+	return d.pos
+}
+
+type LetStmt struct {
+	id   Token
+	expr Node
+}
+
+func (t LetStmt) String() string {
+	return t.id.Literal
+}
+
+func (t LetStmt) Pos() Position {
+	return t.id.Pos()
+}
+
 type Parameter struct {
 	id    Token
 	props map[string]Token
