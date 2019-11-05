@@ -84,8 +84,8 @@ block misc1 (
 )
 
 data (
-  ident0[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
-  ident1[offset=0, repeat=1, type=u8, size=8, transform=KO_OK]
+  ident0[offset=0, type=u8, size=8, transform=KO_OK]
+  ident1[offset=0, type=u8, size=8, transform=KO_OK]
   param0
   include param
 
@@ -109,4 +109,11 @@ data (
   let ident5 = ident5 + ident4 + 3
 
   seek 16
+
+  repeat 2 param
+  repeat 10 (
+    ident8[size=10]
+    ident9[size=10]
+    ident7[size=4]
+  )
 )
