@@ -228,12 +228,6 @@ func (s *Scanner) scanOperator(tok *Token) {
 		if s.char != pipe {
 			tok.Type = Illegal
 		}
-	case s.char == colon:
-		s.readByte()
-		tok.Type = Cast
-		if s.char != colon {
-			tok.Type = Illegal
-		}
 	}
 }
 
@@ -282,7 +276,7 @@ func isHexa(b byte) bool {
 }
 
 func isOp(b byte) bool {
-	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe || b == colon
+	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe
 }
 
 func isComment(b byte) bool {

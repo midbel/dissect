@@ -449,14 +449,14 @@ func (p *Parser) parseAssignment() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type != Assign {
-		return nil, fmt.Errorf("parseAssignment: expected =, got %s", p.curr)
+		return nil, fmt.Errorf("assign: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	p.nextToken()
 	switch p.curr.Type {
 	case Integer, Float, Text, Ident, Bool:
 		node.value = p.curr
 	default:
-		return nil, fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+		return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	p.nextToken()
 	switch p.curr.Type {
@@ -465,7 +465,7 @@ func (p *Parser) parseAssignment() (Node, error) {
 	case Newline:
 		p.nextToken()
 	default:
-		return nil, fmt.Errorf("parseAssignment: unexpected token %s", p.curr)
+		return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	return node, nil
 }
