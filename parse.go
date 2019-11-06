@@ -140,6 +140,10 @@ func (p *Parser) parseStatements() ([]Node, error) {
 				node, err = p.parseSeek()
 			} else if lit == kwRepeat {
 				node, err = p.parseRepeat()
+			} else if lit == kwExit {
+				node, err = p.parseExit()
+			} else if lit == kwMatch {
+				node, err = p.parseMatch()
 			} else {
 				err = fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())
 			}
@@ -321,6 +325,81 @@ func (p *Parser) parseInfix(left Expression) (Expression, error) {
 		expr.Right = right
 	}
 	return expr, err
+}
+
+func (p *Parser) parseExit() (Node, error) {
+	e := ExitStmt{pos: p.curr.Pos()}
+	p.nextToken()
+	if p.curr.Type != Integer {
+		return nil, fmt.Errorf("exit: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	e.code = p.curr
+	if p.peek.Type != Newline {
+		return nil, fmt.Errorf("exit: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	return e, nil
+}
+
+func (p *Parser) parseMatch() (Node, error) {
+	m := Match{pos: p.curr.Pos()}
+
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return nil, fmt.Errorf("match: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	m.id = p.curr
+
+	p.nextToken()
+	if p.curr.Type != Keyword && p.curr.Literal != kwWith {
+		return nil, fmt.Errorf("match: expected with, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	if p.curr.Type != lparen {
+		return nil, fmt.Errorf("match: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		if p.curr.Type != Integer {
+			return nil, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		mc := MatchCase{cond: p.curr}
+
+		p.nextToken()
+		if p.curr.Type != Assign {
+			return nil, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		p.nextToken()
+
+		switch p.curr.Type {
+		case Ident, Text:
+			mc.node = Reference{id: p.curr}
+			p.nextToken()
+		case lparen:
+			ns, err := p.parseStatements()
+			if err != nil {
+				return nil, err
+			}
+			tok := Token{
+				Literal: kwInline,
+				Type:    Keyword,
+				pos:     m.Pos(),
+			}
+			mc.node = Block{
+				id:    tok,
+				nodes: ns,
+			}
+		default:
+			return nil, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		m.nodes = append(m.nodes, mc)
+	}
+	p.nextToken()
+	return m, nil
 }
 
 func (p *Parser) parseInclude() (Node, error) {

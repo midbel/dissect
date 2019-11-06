@@ -23,7 +23,7 @@ func dumpNode(n Node, level int) error {
 	indent := strings.Repeat(" ", level*2)
 	switch n := n.(type) {
 	case Block:
-		fmt.Printf("%s%s(type=%s, pos=%s) (\n", indent, n.String(), n.Pos(), n.blockName())
+		fmt.Printf("%sblock(name=%s, type=%s, pos=%s) (\n", indent, n.String(), n.blockName(), n.Pos())
 		for _, n := range n.nodes {
 			dumpNode(n, level+1)
 		}
@@ -34,6 +34,8 @@ func dumpNode(n Node, level int) error {
 			dumpNode(n, level+1)
 		}
 		fmt.Printf("%s)", indent)
+	case ExitStmt:
+		fmt.Printf("%sexit(code=%s, pos=%s)", indent, n.code.Literal, n.Pos())
 	case LetStmt:
 		fmt.Printf("%slet(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
 	case DelStmt:
@@ -44,6 +46,16 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%s)", indent)
 	case SeekStmt:
 		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset.Literal, n.Pos())
+	case Match:
+		fmt.Printf("%smatch(name=%s, pos=%s) (\n", indent, n.id.Literal, n.Pos())
+		for _, n := range n.nodes {
+			dumpNode(n, level+1)
+		}
+		fmt.Printf("%s)", indent)
+	case MatchCase:
+		fmt.Printf("%scase(cond=%s) (\n", indent, n.cond.Literal)
+		dumpNode(n.node, level+1)
+		fmt.Printf("%s)", indent)
 	case Repeat:
 		fmt.Printf("%srepeat(repeat=%s, pos=%s) (\n", indent, n.repeat.Literal, n.Pos())
 		dumpNode(n.node, level+1)

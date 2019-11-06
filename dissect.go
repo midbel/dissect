@@ -107,6 +107,8 @@ const (
 	kwFloat   = "float"
 	kwString  = "string"
 	kwBytes   = "bytes"
+	kwMatch   = "match"
+	kwWith    = "with"
 	kwBig     = "big"
 	kwLittle  = "little"
 )
@@ -125,11 +127,14 @@ var keywords = []string{
 	kwDel,
 	kwSeek,
 	kwRepeat,
+	kwExit,
 	kwInt,
 	kwUint,
 	kwFloat,
 	kwString,
 	kwBytes,
+	kwMatch,
+	kwWith,
 	kwBig,
 	kwLittle,
 }

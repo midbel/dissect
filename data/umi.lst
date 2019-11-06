@@ -26,5 +26,9 @@ data(
   include about
   include time
 
-  parameter
+  match type with (
+    0 = x
+    1 = y
+    2 = z
+  )
 )

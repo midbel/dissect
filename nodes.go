@@ -112,6 +112,19 @@ func (b Binary) exprNode() Node {
 	return b
 }
 
+type ExitStmt struct {
+	pos  Position
+	code Token
+}
+
+func (e ExitStmt) String() string {
+	return "exit"
+}
+
+func (e ExitStmt) Pos() Position {
+	return e.pos
+}
+
 type SeekStmt struct {
 	pos    Position
 	offset Token
@@ -202,6 +215,33 @@ func (r Reference) String() string {
 
 func (r Reference) Pos() Position {
 	return r.id.pos
+}
+
+type MatchCase struct {
+	cond Token
+	node Node
+}
+
+func (m MatchCase) Pos() Position {
+	return m.cond.Pos()
+}
+
+func (m MatchCase) String() string {
+	return m.cond.String()
+}
+
+type Match struct {
+	pos   Position
+	id    Token
+	nodes []MatchCase
+}
+
+func (m Match) Pos() Position {
+	return m.pos
+}
+
+func (m Match) String() string {
+	return fmt.Sprintf("match(%s)", m.id)
 }
 
 type Repeat struct {
