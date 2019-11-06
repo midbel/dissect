@@ -115,6 +115,9 @@ func (root *state) decodeBlock(data Block) error {
 			}
 		case Repeat:
 			// ignore for now
+			if err := root.decodeRepeat(n); err != nil {
+				return err
+			}
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)
 			if err != nil {
@@ -201,6 +204,53 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	}
 	root.Pos += bits
 	return raw, nil
+}
+
+func (root *state) decodeRepeat(n Repeat) error {
+	var (
+		dat    Block
+		repeat uint64
+		err    error
+	)
+	switch n.repeat.Type {
+	case Integer:
+		repeat, err = strconv.ParseUint(n.repeat.Literal, 0, 64)
+	case Float:
+		if f, e := strconv.ParseFloat(n.repeat.Literal, 64); e == nil {
+			repeat = uint64(f)
+		} else {
+			err = e
+		}
+	case Ident, Text:
+		if v, e := root.ResolveValue(n.repeat.Literal); e == nil {
+			repeat = asUint(v)
+		} else {
+			err = e
+		}
+	default:
+		err = fmt.Errorf("unsupported token type %s", TokenString(n.repeat))
+	}
+	if err != nil {
+		return err
+	}
+	if repeat == 0 {
+		repeat++
+	}
+	switch n := n.node.(type) {
+	case Block:
+		dat = n
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+	}
+	if err != nil {
+		return err
+	}
+	for i := uint64(0); i < repeat; i++ {
+		if err = root.decodeBlock(dat); err != nil {
+			break
+		}
+	}
+	return err
 }
 
 func (root *state) decodeInclude(n Include) error {

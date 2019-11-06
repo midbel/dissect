@@ -46,23 +46,23 @@ define (
 
 block pid (
   version[numbit=3]
-  type[numbit=1, transform=Type]
+  type[numbit=1, apply=Type]
   second[numbit=1]
   apid[numbit=11, type=u16]
 )
 
 block segment (
-  segment[numbit=2, transform=Segmentation]
+  segment[numbit=2, apply=Segmentation]
   sequence[numbit=14, type=u16]
 )
 
 block secondary (
   coarse
   fine
-  timeid[numbit=2, transform=TimeType]
+  timeid[numbit=2, apply=TimeType]
   checksum[numbit=1]
   spare[numbit=1]
-  packid[numbit=4, transform=PacketType]
+  packid[numbit=4, apply=PacketType]
   sid[numbit=32, type=u32]
 )
 

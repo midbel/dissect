@@ -23,7 +23,11 @@ func (b Boolean) Cmp(v Value) int {
 	if o.Raw == b.Raw {
 		return 0
 	}
-	return -1
+	if b.Raw == false {
+		return -1
+	} else {
+		return 1
+	}
 }
 
 func (b Boolean) String() string {
