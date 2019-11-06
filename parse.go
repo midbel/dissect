@@ -524,7 +524,7 @@ func (p *Parser) parseDefine() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		b.nodes = append(b.nodes, n)
+		b.nodes = append(b.nodes, n.(Constant))
 	}
 	p.nextToken()
 	return b, nil
@@ -595,7 +595,7 @@ func (p *Parser) parsePair() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		a.nodes = append(a.nodes, n)
+		a.nodes = append(a.nodes, n.(Constant))
 	}
 	p.nextToken()
 	return a, nil

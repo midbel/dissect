@@ -172,29 +172,33 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	if n := root.Size; n < need {
 		return nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
 	}
+	meta := Meta{
+		Id:  p.id.Literal,
+		Pos: root.Pos,
+	}
 	dat := btoi(root.buffer[index:index+need], shift, mask)
-	switch id := p.id.Literal; p.is() {
+	switch p.is() {
 	case kindInt: // signed integer
-		raw = Int{
-			Id:  id,
-			Pos: root.Pos,
-			Raw: int64(dat),
+		raw = &Int{
+			Meta: meta,
+			Raw:  int64(dat),
 		}
 	case kindUint: // unsigned integer
-		raw = Uint{
-			Id:  id,
-			Pos: root.Pos,
-			Raw: dat,
+		raw = &Uint{
+			Meta: meta,
+			Raw:  dat,
 		}
 	case kindFloat: // float
 		// raw = math.Float64frombits(dat)
-		raw = Real{
-			Id:  id,
-			Pos: root.Pos,
-			Raw: math.Float64frombits(dat),
+		raw = &Real{
+			Meta: meta,
+			Raw:  math.Float64frombits(dat),
 		}
 	default:
 		return nil, fmt.Errorf("unsupported type: %c", p.is())
+	}
+	if err := evalApply(raw, p.apply, root); err != nil {
+		return raw, err
 	}
 	root.Pos += bits
 	return raw, nil
@@ -240,7 +244,7 @@ func (root *state) decodeRepeat(n Repeat) error {
 		return err
 	}
 	for i := uint64(0); i < repeat; i++ {
-		if err = root.decodeBlock(dat); err != nil {
+		if err := root.decodeBlock(dat); err != nil {
 			break
 		}
 	}
@@ -265,6 +269,85 @@ func (root *state) decodeInclude(n Include) error {
 		err = root.decodeBlock(data)
 	}
 	return err
+}
+
+func evalApply(v Value, n Node, root *state) error {
+	tok, ok := n.(Token)
+	if !ok {
+		v.Set(v)
+		return nil
+	}
+	p, err := root.ResolvePair(tok.Literal)
+	if err != nil {
+		return err
+	}
+	var fn func([]Constant, Value) Value
+	switch p.kind.Literal {
+	case kwEnum:
+		fn = evalEnum
+	case kwPoly:
+		fn = evalPoly
+	case kwPoint:
+		fn = evalPoint
+	}
+	x := fn(p.nodes, v)
+	v.Set(x)
+	return nil
+}
+
+func evalPoint(cs []Constant, v Value) Value {
+	raw := asInt(v)
+	for i := 0; i < len(cs); i++ {
+		c := cs[i]
+		id, _ := strconv.ParseInt(c.id.Literal, 0, 64)
+		if raw == id {
+			val, _ := strconv.ParseFloat(c.value.Literal, 64)
+			return &Real{
+				Meta: Meta{Id: v.String()},
+				Raw:  val,
+			}
+		}
+		if j := i + 1; j < len(cs) {
+			next, _ := strconv.ParseInt(cs[j].id.Literal, 0, 64)
+			if id < raw && raw < next {
+				// linear interpolation
+				break
+			}
+		}
+	}
+	return v
+}
+
+func evalEnum(cs []Constant, v Value) Value {
+	raw := asInt(v)
+	for _, c := range cs {
+		id, _ := strconv.ParseInt(c.id.Literal, 0, 64)
+		if raw == id {
+			v := &String{
+				Meta: Meta{Id: v.String()},
+				Raw:  c.value.Literal,
+			}
+			return v
+		}
+	}
+	return nil
+}
+
+func evalPoly(cs []Constant, v Value) Value {
+	var (
+		raw = asReal(v)
+		eng float64
+	)
+	for _, c := range cs {
+		pow, _ := strconv.ParseFloat(c.id.Literal, 64)
+		mul, _ := strconv.ParseFloat(c.value.Literal, 64)
+
+		eng += mul * math.Pow(raw, pow)
+	}
+	return &Real{
+		Meta: Meta{Id: v.String()},
+		Raw:  eng,
+	}
 }
 
 func evalPredicate(e Expression, root *state) bool {
@@ -328,17 +411,17 @@ func resolveValue(e Expression, root *state) (Value, error) {
 		err = fmt.Errorf("unexpected expression type %T", e)
 	case Literal:
 		if id := e.id.Literal; e.id.Type == Float {
-			r := Real{Id: id}
+			r := &Real{Meta: Meta{Id: id}}
 			r.Raw, err = strconv.ParseFloat(e.id.Literal, 64)
 
 			v = r
 		} else if e.id.Type == Integer {
-			i := Int{Id: id}
+			i := &Int{Meta: Meta{Id: id}}
 			i.Raw, err = strconv.ParseInt(e.id.Literal, 0, 64)
 
 			v = i
 		} else if e.id.Type == Bool {
-			b := Boolean{Id: id}
+			b := &Boolean{Meta: Meta{Id: id}}
 			b.Raw, err = strconv.ParseBool(e.id.Literal)
 
 			v = b

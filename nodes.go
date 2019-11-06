@@ -249,7 +249,7 @@ func (c Constant) Pos() Position {
 type Pair struct {
 	id    Token
 	kind  Token
-	nodes []Node
+	nodes []Constant
 }
 
 func (p Pair) String() string {

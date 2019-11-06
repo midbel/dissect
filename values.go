@@ -2,21 +2,49 @@ package dissect
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Value interface {
 	fmt.Stringer
 	Cmp(Value) int
+	Set(Value)
+}
+
+type Meta struct {
+	Id  string
+	Pos int
+	Eng Value
+}
+
+func (m *Meta) Set(v Value) {
+	m.Eng = v
+}
+
+func (m *Meta) String() string {
+	return m.Id
+}
+
+type String struct {
+	Meta
+	Raw string
+}
+
+func (s *String) Cmp(v Value) int {
+	str, ok := v.(*String)
+	if !ok {
+		return -1
+	}
+	return strings.Compare(s.Raw, str.Raw)
 }
 
 type Boolean struct {
-	Id  string
-	Pos int
+	Meta
 	Raw bool
 }
 
-func (b Boolean) Cmp(v Value) int {
-	o, ok := v.(Boolean)
+func (b *Boolean) Cmp(v Value) int {
+	o, ok := v.(*Boolean)
 	if !ok {
 		return -1
 	}
@@ -30,17 +58,12 @@ func (b Boolean) Cmp(v Value) int {
 	}
 }
 
-func (b Boolean) String() string {
-	return b.Id
-}
-
 type Int struct {
-	Id  string
-	Pos int
+	Meta
 	Raw int64
 }
 
-func (i Int) Cmp(v Value) int {
+func (i *Int) Cmp(v Value) int {
 	if x := asInt(v); i.Raw > x {
 		return 1
 	} else if i.Raw < x {
@@ -50,17 +73,12 @@ func (i Int) Cmp(v Value) int {
 	}
 }
 
-func (i Int) String() string {
-	return i.Id
-}
-
 type Uint struct {
-	Id  string
-	Pos int
+	Meta
 	Raw uint64
 }
 
-func (i Uint) Cmp(v Value) int {
+func (i *Uint) Cmp(v Value) int {
 	if x := asUint(v); i.Raw > x {
 		return 1
 	} else if i.Raw < x {
@@ -70,17 +88,12 @@ func (i Uint) Cmp(v Value) int {
 	}
 }
 
-func (i Uint) String() string {
-	return i.Id
-}
-
 type Real struct {
-	Id  string
-	Pos int
+	Meta
 	Raw float64
 }
 
-func (r Real) Cmp(v Value) int {
+func (r *Real) Cmp(v Value) int {
 	if x := asReal(v); r.Raw > x {
 		return 1
 	} else if r.Raw < x {
@@ -90,17 +103,13 @@ func (r Real) Cmp(v Value) int {
 	}
 }
 
-func (f Real) String() string {
-	return f.Id
-}
-
 func asReal(v Value) float64 {
 	switch v := v.(type) {
-	case Real:
+	case *Real:
 		return v.Raw
-	case Uint:
+	case *Uint:
 		return float64(v.Raw)
-	case Int:
+	case *Int:
 		return float64(v.Raw)
 	default:
 		return 0
@@ -109,11 +118,11 @@ func asReal(v Value) float64 {
 
 func asUint(v Value) uint64 {
 	switch v := v.(type) {
-	case Uint:
+	case *Uint:
 		return v.Raw
-	case Int:
+	case *Int:
 		return uint64(v.Raw)
-	case Real:
+	case *Real:
 		return uint64(v.Raw)
 	default:
 		return 0
@@ -122,11 +131,11 @@ func asUint(v Value) uint64 {
 
 func asInt(v Value) int64 {
 	switch v := v.(type) {
-	case Int:
+	case *Int:
 		return v.Raw
-	case Uint:
+	case *Uint:
 		return int64(v.Raw)
-	case Real:
+	case *Real:
 		return int64(v.Raw)
 	default:
 		return 0

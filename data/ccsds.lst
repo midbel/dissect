@@ -3,6 +3,10 @@ enum Type (
   1 = payload
 )
 
+enum Version (
+  0 = 1
+)
+
 enum Segmentation (
   0 = continuation
   1 = start
@@ -45,7 +49,7 @@ define (
 )
 
 block pid (
-  version: 3
+  version: 3, Version
   type   : 1, Type
   second : 1
   apid   : uint 11
