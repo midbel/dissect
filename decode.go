@@ -174,30 +174,24 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	}
 	dat := btoi(root.buffer[index:index+need], shift, mask)
 	switch id := p.id.Literal; p.is() {
-	case 'i': // signed integer
+	case kindInt: // signed integer
 		raw = Int{
 			Id:  id,
 			Pos: root.Pos,
 			Raw: int64(dat),
 		}
-	case 'u': // unsigned integer
+	case kindUint: // unsigned integer
 		raw = Uint{
 			Id:  id,
 			Pos: root.Pos,
 			Raw: dat,
 		}
-	case 'f': // float
+	case kindFloat: // float
 		// raw = math.Float64frombits(dat)
 		raw = Real{
 			Id:  id,
 			Pos: root.Pos,
 			Raw: math.Float64frombits(dat),
-		}
-	case 'b': // boolean
-		raw = Boolean{
-			Id:  id,
-			Pos: root.Pos,
-			Raw: dat != 0,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported type: %c", p.is())

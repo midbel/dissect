@@ -153,7 +153,9 @@ func (t LetStmt) Pos() Position {
 
 type Parameter struct {
 	id    Token
-	props map[string]Token
+	size  Token
+	kind  Token
+	apply Node
 }
 
 func (p Parameter) String() string {
@@ -166,11 +168,8 @@ func (p Parameter) Pos() Position {
 
 func (p Parameter) numbit() int {
 	var size int
-	if z, ok := p.props["numbit"]; ok {
-		size, _ = strconv.Atoi(z.Literal)
-	}
-	if z, ok := p.props["type"]; ok && size == 0 {
-		size, _ = strconv.Atoi(z.Literal[1:])
+	if z, err := strconv.Atoi(p.size.Literal); err == nil {
+		size = z
 	}
 	if size == 0 {
 		size++
@@ -178,20 +177,19 @@ func (p Parameter) numbit() int {
 	return size
 }
 
-func (p Parameter) is() byte {
-	z, ok := p.props["type"]
-	if !ok {
-		return 'u'
+func (p Parameter) is() Kind {
+	switch p.kind.Literal {
+	default:
+		return kindInt
+	case kwUint:
+		return kindUint
+	case kwFloat:
+		return kindFloat
+	case kwString:
+		return kindString
+	case kwBytes:
+		return kindBytes
 	}
-	return z.Literal[0]
-}
-
-func (p Parameter) offset() int {
-	var offset int
-	if z, ok := p.props["offset"]; ok {
-		offset, _ = strconv.Atoi(z.Literal)
-	}
-	return offset
 }
 
 type Reference struct {
@@ -237,6 +235,7 @@ func (i Include) Pos() Position {
 type Constant struct {
 	id    Token
 	value Token
+	kind  Kind
 }
 
 func (c Constant) String() string {

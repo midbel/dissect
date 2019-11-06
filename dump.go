@@ -59,15 +59,7 @@ func dumpNode(n Node, level int) error {
 	case Reference:
 		fmt.Printf("%sreference(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
 	case Parameter:
-		fmt.Printf("%sparameter(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
-		if len(n.props) > 0 {
-			fmt.Println("[")
-			ni := indent + strings.Repeat(" ", level*2)
-			for k, v := range n.props {
-				fmt.Printf("%sproperty(name=%s, value=%s)\n", ni, k, v.Literal)
-			}
-			fmt.Print(indent + "]")
-		}
+		fmt.Printf("%sparameter(name=%s, type=%s, size=%s, pos=%s)", indent, n.id.Literal, n.kind.Literal, n.size.Literal, n.Pos())
 	case Constant:
 		fmt.Printf("%sconstant(name=%s, value=%s, pos=%s)", indent, n.id.Literal, n.value.Literal, n.Pos())
 	default:

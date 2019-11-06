@@ -369,19 +369,34 @@ func (p *Parser) parseField() (node Node, err error) {
 	switch p.curr.Type {
 	case Newline:
 		node = Reference{id: id}
-	case lsquare:
-		if p.peek.Type == rsquare {
-			node = Reference{id: id}
-
-			p.nextToken()
-			p.nextToken()
-		} else {
-			a := Parameter{id: id}
-			a.props, err = p.parseProperties()
-			if err == nil {
-				node = a
+	case colon:
+		a := Parameter{id: id}
+		p.nextToken()
+		if p.curr.Type == Keyword {
+			switch lit := p.curr.Literal; lit {
+			case kwInt, kwUint, kwFloat, kwBytes, kwString:
+			default:
+				return nil, fmt.Errorf("field: unexepected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 			}
+			a.kind = p.curr
+			p.nextToken()
 		}
+		if p.curr.Type == Integer {
+			a.size = p.curr
+			p.nextToken()
+		}
+		if p.curr.Type == comma {
+			p.nextToken()
+			if !p.curr.isIdent() {
+				return nil, fmt.Errorf("field: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			a.apply = p.curr
+			p.nextToken()
+		}
+		if p.curr.Type != Newline {
+			return nil, fmt.Errorf("field: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		node = a
 	default:
 		err = fmt.Errorf("field: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
@@ -431,9 +446,6 @@ func (p *Parser) parseDeclare() (Node, error) {
 		if p.curr.Type == rparen {
 			break
 		}
-		if p.peek.Type != lsquare {
-			return nil, fmt.Errorf("declare: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
 		n, err := p.parseField()
 		if err != nil {
 			return nil, err
@@ -444,10 +456,32 @@ func (p *Parser) parseDeclare() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseAssignment() (Node, error) {
-	node := Constant{id: p.curr}
+func (p *Parser) parseAssignment(withkind bool) (Node, error) {
+	node := Constant{
+		id:   p.curr,
+		kind: kindInt,
+	}
 
 	p.nextToken()
+	if p.curr.Type == colon {
+		if !withkind {
+			return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		p.nextToken()
+		if p.curr.Type != Keyword {
+			return nil, fmt.Errorf("assign: expected keyword, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		switch lit := p.curr.Literal; lit {
+		case kwInt:
+		case kwUint:
+			node.kind = kindUint
+		case kwFloat:
+			node.kind = kindFloat
+		default:
+			return nil, fmt.Errorf("assign: unexpected type %s (%s)", lit, p.curr.Pos())
+		}
+		p.nextToken()
+	}
 	if p.curr.Type != Assign {
 		return nil, fmt.Errorf("assign: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
@@ -486,7 +520,7 @@ func (p *Parser) parseDefine() (Node, error) {
 		if !p.curr.isIdent() {
 			return nil, fmt.Errorf("define: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		n, err := p.parseAssignment()
+		n, err := p.parseAssignment(true)
 		if err != nil {
 			return nil, err
 		}
@@ -557,7 +591,7 @@ func (p *Parser) parsePair() (Node, error) {
 		if p.curr.Type == rparen {
 			break
 		}
-		n, err := p.parseAssignment()
+		n, err := p.parseAssignment(false)
 		if err != nil {
 			return nil, err
 		}

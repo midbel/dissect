@@ -55,6 +55,34 @@ func init() {
 	sort.Strings(keywords)
 }
 
+type Kind uint8
+
+func (k Kind) String() string {
+	switch k {
+	default:
+		return "<kind:unknown>"
+	case kindInt:
+		return kwInt
+	case kindUint:
+		return kwUint
+	case kindFloat:
+		return kwFloat
+	case kindString:
+		return kwString
+	case kindBytes:
+		return kwBytes
+	}
+}
+
+const (
+	kindNull Kind = iota
+	kindInt
+	kindUint
+	kindFloat
+	kindString
+	kindBytes
+)
+
 const (
 	kwEnum    = "enum"
 	kwPoly    = "polynomial"
@@ -74,6 +102,13 @@ const (
 	kwFalse   = "false"
 	kwAno     = "anonymous"
 	kwExit    = "exit"
+	kwInt     = "int"
+	kwUint    = "uint"
+	kwFloat   = "float"
+	kwString  = "string"
+	kwBytes   = "bytes"
+	kwBig     = "big"
+	kwLittle  = "little"
 )
 
 var keywords = []string{
@@ -90,6 +125,13 @@ var keywords = []string{
 	kwDel,
 	kwSeek,
 	kwRepeat,
+	kwInt,
+	kwUint,
+	kwFloat,
+	kwString,
+	kwBytes,
+	kwBig,
+	kwLittle,
 }
 
 type Expression interface {

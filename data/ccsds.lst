@@ -36,8 +36,8 @@ enum TimeType (
 )
 
 declare (
-  coarse[type=u32]
-  fine[type=u8]
+  coarse: uint 32
+  fine  : uint 8
 )
 
 define (
@@ -45,38 +45,38 @@ define (
 )
 
 block pid (
-  version[numbit=3]
-  type[numbit=1, apply=Type]
-  second[numbit=1]
-  apid[numbit=11, type=u16]
+  version: 3
+  type   : 1, Type
+  second : 1
+  apid   : uint 11
 )
 
 block segment (
-  segment[numbit=2, apply=Segmentation]
-  sequence[numbit=14, type=u16]
+  segment: 2, Segmentation
+  sequence: uint 14
 )
 
 block secondary (
   coarse
   fine
-  timeid[numbit=2, apply=TimeType]
-  checksum[numbit=1]
-  spare[numbit=1]
-  packid[numbit=4, apply=PacketType]
-  sid[numbit=32, type=u32]
+  timeid  : 2, TimeType
+  checksum: 1
+  spare   : 1
+  packid  : 4, PacketType
+  sid     : uint 32
 )
 
 block private (
-  src[type=u8]
-  dst[type=u8]
-  class[type=u8]
-  type[type=u8]
+  src  : uint 8
+  dst  : uint 8
+  klass: uint 8
+  type : uint 8
 )
 
 data (
   include pid
   include segment
-  length[type=u16]
+  length: uint 16
 
   include[second==1] secondary
   include private

@@ -1,16 +1,29 @@
-block time (
+declare (
   coarse: uint 32
   fine  : uint 8
 )
 
-data(
-  size  : uint 32
+block time (
+  coarse
+  fine
+)
+
+block pid (
   code  : uint 48
   orbit : uint 32
   type  : uint 8
+)
+
+block about (
   length: uint 16
   unit  : uint 16
+)
 
+data(
+  size  : uint 32
+
+  include pid
+  include about
   include time
 
   parameter
