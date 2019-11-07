@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"strconv"
 )
 
@@ -110,7 +111,7 @@ func (root *state) decodeBlock(data Block) error {
 				return fmt.Errorf("invalid seek value given")
 			}
 			root.Pos += seek
-			if root.Pos < 0 || root.Pos >= root.Size {
+			if root.Pos < 0 || root.Pos >= (root.Size*numbit) {
 				return fmt.Errorf("seek outside of buffer range")
 			}
 		case Repeat:
@@ -193,13 +194,23 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 			Raw:  dat,
 		}
 	case kindFloat: // float
-		// raw = math.Float64frombits(dat)
 		raw = &Real{
 			Meta: meta,
 			Raw:  math.Float64frombits(dat),
 		}
+	case kindBytes:
+		raw = &Bytes{
+			Meta: meta,
+			Raw: root.buffer[index:index+need],
+		}
+	case kindString:
+		str := root.buffer[index:index+need]
+		raw = &String{
+			Meta: meta,
+			Raw: strings.Trim(string(str), "\x00"),
+		}
 	default:
-		return nil, fmt.Errorf("unsupported type: %c", p.is())
+		return nil, fmt.Errorf("unsupported type: %s", p.is())
 	}
 	if err := evalApply(raw, p.apply, root); err != nil {
 		return raw, err
@@ -239,6 +250,9 @@ func (root *state) decodeMatch(n Match) error {
 			break
 		}
 	}
+	if node == nil {
+		return nil
+	}
 	var dat Block
 	switch n := node.(type) {
 	case Reference:
@@ -246,6 +260,7 @@ func (root *state) decodeMatch(n Match) error {
 	case Block:
 		dat = n
 	default:
+		fmt.Println("here")
 		return fmt.Errorf("unexpected node type %T", n)
 	}
 	if err == nil {

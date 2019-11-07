@@ -1,6 +1,7 @@
 package dissect
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -23,6 +24,19 @@ func (m *Meta) Set(v Value) {
 
 func (m *Meta) String() string {
 	return m.Id
+}
+
+type Bytes struct {
+	Meta
+	Raw []byte
+}
+
+func (b *Bytes) Cmp(v Value) int {
+	str, ok := v.(*Bytes)
+	if !ok {
+		return -1
+	}
+	return bytes.Compare(b.Raw, str.Raw)
 }
 
 type String struct {

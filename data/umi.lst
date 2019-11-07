@@ -1,8 +1,3 @@
-declare (
-  coarse: uint 32
-  fine  : uint 8
-)
-
 enum DaSS (
   0 = "no value"
   1 = "same value"
@@ -12,6 +7,7 @@ enum DaSS (
 )
 
 enum State (
+  0     = nominal
   1     = missing
   2     = dead
   4     = offScaleHigh
@@ -21,7 +17,10 @@ enum State (
   2048  = exception
   8192  = change
   32768 = override
+)
 
+polynomial Length (
+  2 = 1
 )
 
 enum Type (
@@ -41,6 +40,11 @@ enum Type (
   14 = "bit"
 )
 
+declare (
+  coarse: uint 32
+  fine  : uint 8
+)
+
 block time (
   coarse
   fine
@@ -55,7 +59,6 @@ block pid (
 
 block about (
   type  : uint 8, Type
-  length: uint 16
   unit  : uint 16
 )
 
@@ -66,15 +69,30 @@ data(
   include about
   include time
 
+  length: uint 16
+
   match type with (
-    1, 6  = (
-      param: int
+    1 = (
+      param: int 32
+    )
+    2 = (
+      param: float 64
+    )
+    3 = (
+      param: bytes 64
+    )
+    4 = (
+      param: int 32
     )
     5 = (
-      param: string
+      param: string 64
     )
-    2, 7, 8, 9 = (
-      param: float
+    6 = (
+      param: int 64
+    )
+    14 = (
+      seek 7
+      param: int 1
     )
   )
 )
