@@ -3,6 +3,7 @@ package dissect
 import (
 	"fmt"
 	"io"
+	"strconv"
 )
 
 const (
@@ -719,6 +720,18 @@ func merge(dat, root Block) (Node, error) {
 				return nil, err
 			}
 			nodes = append(nodes, p)
+		case Repeat:
+			r, err := mergeRepeat(n, root)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, r)
+		case Match:
+			m, err := mergeMatch(n, root)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, m)
 		case Include:
 			b, err := mergeInclude(n, root)
 			if err != nil {
@@ -738,6 +751,78 @@ func merge(dat, root Block) (Node, error) {
 		nodes: nodes,
 	}
 	return dat, nil
+}
+
+func mergeRepeat(r Repeat, root Block) (Node, error) {
+	if r.repeat.isIdent() {
+		return r, nil
+	}
+	var repeat int64
+	switch r.repeat.Type {
+	case Integer:
+		repeat, _ = strconv.ParseInt(r.repeat.Literal, 0, 64)
+	case Float:
+		f, _ := strconv.ParseFloat(r.repeat.Literal, 64)
+		repeat = int64(f)
+	default:
+		return nil, fmt.Errorf("unexpected token %s", TokenString(r.repeat))
+	}
+	var (
+		dat Block
+		node Node
+		err error
+	)
+	switch n := r.node.(type) {
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+	case Block:
+		dat = n
+	}
+	if err != nil {
+		return nil, err
+	}
+	if node, err = merge(dat, root); err != nil {
+		return nil, err
+	}
+	tok := Token{
+		Type: Keyword,
+		Literal: kwInline,
+		pos: r.Pos(),
+	}
+	pat := Block{id: tok}
+	for i := int64(0); i < repeat; i++ {
+		n := node
+		pat.nodes = append(pat.nodes, n)
+	}
+	return pat, nil
+}
+
+func mergeMatch(m Match, root Block) (Node, error) {
+	var nodes []MatchCase
+	for _, c := range m.nodes {
+		var (
+			err error
+			dat Block
+		)
+		switch n := c.node.(type) {
+		case Reference:
+			dat, err = root.ResolveBlock(n.id.Literal)
+		case Block:
+			dat = n
+		default:
+			err = fmt.Errorf("unexpected node type %T", n)
+		}
+		if err != nil {
+			return nil, err
+		}
+		c.node, err = merge(dat, root)
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, c)
+	}
+	m.nodes = nodes
+	return m, nil
 }
 
 func mergeInclude(i Include, root Block) (Node, error) {

@@ -25,10 +25,4 @@ data(
   include pid
   include about
   include time
-
-  match type with (
-    0 = x
-    1 = y
-    2 = z
-  )
 )
