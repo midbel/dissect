@@ -501,36 +501,6 @@ func (p *Parser) parseField() (node Node, err error) {
 	return
 }
 
-func (p *Parser) parseProperties() (map[string]Token, error) {
-	props := make(map[string]Token)
-	for p.curr.Type != rsquare {
-		p.nextToken()
-		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("properties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		key := p.curr
-		p.nextToken()
-		if p.curr.Type != Assign {
-			return nil, fmt.Errorf("properties: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		p.nextToken()
-		switch p.curr.Type {
-		case Ident, Text, Integer, Bool:
-			props[key.Literal] = p.curr
-		default:
-			return nil, fmt.Errorf("properties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		p.nextToken()
-		switch p.curr.Type {
-		case rsquare, comma:
-		default:
-			return nil, fmt.Errorf("properties: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-	}
-	p.nextToken()
-	return props, nil
-}
-
 func (p *Parser) parseDeclare() (Node, error) {
 	b := emptyBlock(p.curr)
 
