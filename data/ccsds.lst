@@ -1,6 +1,6 @@
 enum Type (
-  0 = system
-  1 = payload
+  0 = System
+  1 = Payload
 )
 
 enum Version (
@@ -8,23 +8,23 @@ enum Version (
 )
 
 enum Segmentation (
-  0 = continuation
-  1 = start
-  2 = stop
-  3 = unsegmented
+  0 = Continuation
+  1 = Start
+  2 = Stop
+  3 = Unsegmented
 )
 
 enum PacketType (
-  0 = Default
-  1 = DataDump
-  2 = DataSegument
-  3 = EssentialHK
-  4 = SystemHK
-  5 = PayloadHK
-  6 = ScienceData
-  7 = AncillaryData
-  8 = EssentialCmd
-  9 = PayloadCmd
+  0  = Default
+  1  = DataDump
+  2  = DataSegument
+  3  = EssentialHK
+  4  = SystemHK
+  5  = PayloadHK
+  6  = ScienceData
+  7  = AncillaryData
+  8  = EssentialCmd
+  9  = PayloadCmd
   10 = DataLoad
   11 = Response
   12 = Report
@@ -37,6 +37,17 @@ enum TimeType (
   1 = Generated
   2 = Executed
   3 = Invalid
+)
+
+enum Apid (
+  906 = "DHPU"
+  907 = "MMIA"
+  908 = "MXGS"
+  620 = "Response"
+)
+
+enum DataType (
+  9 = Telemetry
 )
 
 declare (
@@ -52,7 +63,7 @@ block pid (
   version: 3, Version
   type   : 1, Type
   second : 1
-  apid   : uint 11
+  apid   : uint 11, Apid
 )
 
 block segment (
@@ -60,9 +71,13 @@ block segment (
   sequence: uint 14
 )
 
-block secondary (
+block time (
   coarse
   fine
+)
+
+block secondary (
+  include time
   timeid  : 2, TimeType
   checksum: 1
   spare   : 1
@@ -78,6 +93,10 @@ block private (
 )
 
 data (
+  size: uint 32
+  type: uint 8, DataType
+  include time
+
   include pid
   include segment
   length: uint 16
