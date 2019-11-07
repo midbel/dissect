@@ -118,6 +118,10 @@ func (root *state) decodeBlock(data Block) error {
 			if err := root.decodeRepeat(n); err != nil {
 				return err
 			}
+		case Match:
+			if err := root.decodeMatch(n); err != nil {
+				return err
+			}
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)
 			if err != nil {
@@ -202,6 +206,52 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	}
 	root.Pos += bits
 	return raw, nil
+}
+
+func (root *state) decodeMatch(n Match) error {
+	v, err := root.ResolveValue(n.id.Literal)
+	if err != nil {
+		return err
+	}
+	var (
+		cdt  = asInt(v)
+		node Node
+	)
+	for _, c := range n.nodes {
+		var raw int64
+		switch c.cond.Type {
+		case Integer:
+			raw, _ = strconv.ParseInt(c.cond.Literal, 0, 64)
+		case Float:
+			f, _ := strconv.ParseFloat(c.cond.Literal, 64)
+			raw = int64(f)
+		case Ident, Text:
+			v, err := root.ResolveValue(c.cond.Literal)
+			if err != nil {
+				return err
+			}
+			raw = asInt(v)
+		default:
+			return fmt.Errorf("unsupported type: %s", TokenString(c.cond))
+		}
+		if cdt == raw {
+			node = c.node
+			break
+		}
+	}
+	var dat Block
+	switch n := node.(type) {
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+	case Block:
+		dat = n
+	default:
+		return fmt.Errorf("unexpected node type %T", n)
+	}
+	if err == nil {
+		err = root.decodeBlock(dat)
+	}
+	return err
 }
 
 func (root *state) decodeRepeat(n Repeat) error {

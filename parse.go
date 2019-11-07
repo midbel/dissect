@@ -769,7 +769,6 @@ func mergeRepeat(r Repeat, root Block) (Node, error) {
 	}
 	var (
 		dat Block
-		node Node
 		err error
 	)
 	switch n := r.node.(type) {
@@ -781,18 +780,23 @@ func mergeRepeat(r Repeat, root Block) (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if node, err = merge(dat, root); err != nil {
+	if node, err := merge(dat, root); err != nil {
 		return nil, err
+	} else {
+		d, ok := node.(Block)
+		if !ok {
+			return nil, fmt.Errorf("unexpected node type %s", node)
+		}
+		dat = d
 	}
 	tok := Token{
-		Type: Keyword,
+		Type:    Keyword,
 		Literal: kwInline,
-		pos: r.Pos(),
+		pos:     r.Pos(),
 	}
 	pat := Block{id: tok}
 	for i := int64(0); i < repeat; i++ {
-		n := node
-		pat.nodes = append(pat.nodes, n)
+		pat.nodes = append(pat.nodes, dat.nodes...)
 	}
 	return pat, nil
 }
