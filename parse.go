@@ -3,6 +3,8 @@ package dissect
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -85,9 +87,11 @@ func (p *Parser) Parse() (Node, error) {
 
 	p.skipComment()
 	if p.curr.Type == Keyword && p.curr.Literal == kwImport {
-		if err := p.parseImport(); err != nil {
+		n, err := p.parseImport()
+		if err != nil {
 			return nil, err
 		}
+		root.nodes = append(root.nodes, n)
 	}
 
 	for {
@@ -365,20 +369,31 @@ func (p *Parser) parseMatch() (Node, error) {
 		if p.curr.Type == rparen {
 			break
 		}
-		if p.curr.Type != Integer {
-			return nil, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		mc := MatchCase{cond: p.curr}
 
-		p.nextToken()
+		var mcs []MatchCase
+		for !p.isDone() {
+			if p.curr.Type == Assign {
+				break
+			}
+			if p.curr.Type != Integer {
+				return nil, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			mcs = append(mcs, MatchCase{cond: p.curr})
+			p.nextToken()
+			if p.curr.Type == comma {
+				p.nextToken()
+			}
+		}
+
 		if p.curr.Type != Assign {
 			return nil, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 		p.nextToken()
 
+		var node Node
 		switch p.curr.Type {
 		case Ident, Text:
-			mc.node = Reference{id: p.curr}
+			node = Reference{id: p.curr}
 			p.nextToken()
 		case lparen:
 			ns, err := p.parseStatements()
@@ -390,14 +405,17 @@ func (p *Parser) parseMatch() (Node, error) {
 				Type:    Keyword,
 				pos:     m.Pos(),
 			}
-			mc.node = Block{
+			node = Block{
 				id:    tok,
 				nodes: ns,
 			}
 		default:
 			return nil, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		m.nodes = append(m.nodes, mc)
+		for i := range mcs {
+			mcs[i].node = node
+		}
+		m.nodes = append(m.nodes, mcs...)
 	}
 	p.nextToken()
 	return m, nil
@@ -610,20 +628,34 @@ func (p *Parser) parseDefine() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseImport() error {
+func (p *Parser) parseImport() (Node, error) {
+	pos := p.curr.Pos()
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	p.nextToken()
+
+	tok := Token{
+		Literal: kwImport,
+		Type:    Keyword,
+		pos:     pos,
+	}
+	ns := Block{id: tok}
 	for !p.isDone() {
 		p.skipComment()
 		if p.curr.Type == rparen {
 			break
 		}
 		if !p.curr.isIdent() {
-			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
+		n, err := p.parseFile(p.curr.Literal)
+		if err != nil {
+			return nil, err
+		}
+		ns.nodes = append(ns.nodes, n)
+
 		p.nextToken()
 		switch p.curr.Type {
 		case Comment:
@@ -631,11 +663,27 @@ func (p *Parser) parseImport() error {
 		case Newline:
 			p.nextToken()
 		default:
-			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 	}
 	p.nextToken()
-	return nil
+	return ns, nil
+}
+
+func (p *Parser) parseFile(file string) (Node, error) {
+	r, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	n, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	root, ok := n.(Block)
+	if !ok {
+		return nil, fmt.Errorf("%s: unexpected node type %T", filepath.Base(file), n)
+	}
+	return root, nil
 }
 
 func (p *Parser) parseBlock() (Node, error) {
