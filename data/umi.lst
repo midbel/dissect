@@ -19,25 +19,22 @@ enum State (
   32768 = override
 )
 
-polynomial Length (
-  2 = 1
-)
-
 enum Type (
-  1  = "int32"
-  2  = "float64"
-  3  = "binary8"
-  4  = "reference"
-  5  = "string8"
-  6  = "long"
-  7  = "decimal"
-  8  = "real"
-  9  = "exponent"
-  10 = "time"
-  11 = "datetime"
-  12 = "stringN"
-  13 = "binaryN"
-  14 = "bit"
+  1   = "int32"
+  2   = "float64"
+  3   = "binary8"
+  4   = "reference"
+  5   = "string8"
+  6   = "long"
+  7   = "decimal"
+  8   = "real"
+  9   = "exponent"
+  10  = "time"
+  11  = "datetime"
+  12  = "stringN"
+  13  = "binaryN"
+  14  = "bit"
+  255 = "bytearray"
 )
 
 declare (
