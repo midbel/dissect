@@ -16,13 +16,6 @@ var (
 
 const numbit = 8
 
-// type Value struct {
-// 	Name  string
-// 	Pos   int
-// 	Raw   interface{}
-// 	Value interface{}
-// }
-
 type Decoder struct {
 	root Block
 	data Block
@@ -284,7 +277,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 }
 
 func (root *state) decodeLet(e LetStmt) (Value, error) {
-	return nil, nil
+	return eval(e.expr, root)
 }
 
 func (root *state) decodeExit(e ExitStmt) error {
@@ -404,8 +397,14 @@ func (root *state) decodeRepeat(n Repeat) error {
 }
 
 func (root *state) decodeInclude(n Include) error {
-	if n.Predicate != nil && !evalPredicate(n.Predicate, root) {
-		return ErrSkip
+	if n.Predicate != nil {
+		ok, err := eval(n.Predicate, root)
+		if err != nil {
+			return err
+		}
+		if !isTrue(ok) {
+			return ErrSkip
+		}
 	}
 	var (
 		data Block
@@ -500,90 +499,6 @@ func evalPoly(cs []Constant, v Value) Value {
 		Meta: Meta{Id: v.String()},
 		Raw:  eng,
 	}
-}
-
-func evalPredicate(e Expression, root *state) bool {
-	switch e := e.(type) {
-	case Binary:
-		return evalBinaryExpression(e, root)
-	case Unary:
-		return !evalPredicate(e, root)
-	default:
-		return false
-	}
-}
-
-func evalBinaryExpression(b Binary, root *state) bool {
-	switch b.operator {
-	default:
-	case And:
-		return evalPredicate(b.Left, root) && evalPredicate(b.Right, root)
-	case Or:
-		return evalPredicate(b.Left, root) || evalPredicate(b.Right, root)
-	}
-
-	left, err := resolveValue(b.Left, root)
-	if err != nil {
-		return false
-	}
-	right, err := resolveValue(b.Right, root)
-	if err != nil {
-		return false
-	}
-
-	var (
-		ok  bool
-		cmp = left.Cmp(right)
-	)
-	switch b.operator {
-	case Equal:
-		ok = cmp == 0
-	case NotEq:
-		ok = cmp != 0
-	case Lesser:
-		ok = cmp < 0
-	case Greater:
-		ok = cmp > 0
-	case LessEq:
-		ok = cmp == 0 || cmp < 0
-	case GreatEq:
-		ok = cmp == 0 || cmp > 0
-	default:
-	}
-	return ok
-}
-
-func resolveValue(e Expression, root *state) (Value, error) {
-	var (
-		v   Value
-		err error
-	)
-	switch e := e.(type) {
-	default:
-		err = fmt.Errorf("unexpected expression type %T", e)
-	case Literal:
-		if id := e.id.Literal; e.id.Type == Float {
-			r := &Real{Meta: Meta{Id: id}}
-			r.Raw, err = strconv.ParseFloat(e.id.Literal, 64)
-
-			v = r
-		} else if e.id.Type == Integer {
-			i := &Int{Meta: Meta{Id: id}}
-			i.Raw, err = strconv.ParseInt(e.id.Literal, 0, 64)
-
-			v = i
-		} else if e.id.Type == Bool {
-			b := &Boolean{Meta: Meta{Id: id}}
-			b.Raw, err = strconv.ParseBool(e.id.Literal)
-
-			v = b
-		} else {
-			err = fmt.Errorf("unexpected token type %s", TokenString(e.id))
-		}
-	case Identifier:
-		v, err = root.ResolveValue(e.id.Literal)
-	}
-	return v, err
 }
 
 func swapBytes(buf []byte, e string) []byte {
