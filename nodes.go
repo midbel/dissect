@@ -39,7 +39,8 @@ func (i Identifier) exprNode() Node {
 }
 
 type Unary struct {
-	Right Expression
+	operator rune
+	Right    Expression
 }
 
 func (u Unary) String() string {
@@ -110,6 +111,39 @@ func (b Binary) Pos() Position {
 
 func (b Binary) exprNode() Node {
 	return b
+}
+
+type Ternary struct {
+	pos  Position
+	cond Expression
+	csq  Expression
+	alt  Expression
+}
+
+func (t Ternary) Pos() Position {
+	return t.pos
+}
+
+func (t Ternary) String() string {
+	var b strings.Builder
+
+	b.WriteRune(lparen)
+	b.WriteString(b.cond.String())
+	b.WriteRune(space)
+	b.WriteRune(question)
+	b.WriteRune(space)
+	b.WriteRune(b.csq.String())
+	b.WriteRune(space)
+	b.WriteRune(colon)
+	b.WriteRune(space)
+	b.WriteRune(b.alt.String())
+	b.WriteRune(rparen)
+
+	return b.String()
+}
+
+func (t Ternary) exprNode() Node {
+	return t
 }
 
 type ExitStmt struct {

@@ -1,0 +1,15 @@
+declare (
+  coarse : uint 32
+  fine8  : uint 8
+  fine16 : uint 16
+)
+
+block time5 (
+  coarse
+  fine8
+)
+
+block time6 (
+  coarse
+  fine16
+)

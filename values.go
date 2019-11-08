@@ -2,14 +2,27 @@ package dissect
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 )
 
+var (
+	ErrIncompatible = errors.New("incompatible type")
+	ErrUnsupported  = errors.New("unsupported operation")
+)
+
 type Value interface {
 	fmt.Stringer
-	Cmp(Value) int
-	Set(Value)
+	Cmp(v Value) int
+	Set(v Value)
+
+	add(v Value) (Value, error)
+	subtract(v Value) (Value, error)
+	multiply(v Value) (Value, error)
+	divide(v Value) (Value, error)
+	modulo(v Value) (Value, error)
+	reverse() (Value, error)
 }
 
 type Meta struct {
@@ -26,30 +39,39 @@ func (m *Meta) String() string {
 	return m.Id
 }
 
-type Bytes struct {
+type Null struct {
 	Meta
-	Raw []byte
 }
 
-func (b *Bytes) Cmp(v Value) int {
-	str, ok := v.(*Bytes)
-	if !ok {
-		return -1
+func (n *Null) Cmp(v Value) int {
+	if _, ok := v.(*Null); ok {
+		return 0
 	}
-	return bytes.Compare(b.Raw, str.Raw)
+	return -1
 }
 
-type String struct {
-	Meta
-	Raw string
+func (n *Null) add(v Value) (Value, error) {
+	return null2null(v)
 }
 
-func (s *String) Cmp(v Value) int {
-	str, ok := v.(*String)
-	if !ok {
-		return -1
-	}
-	return strings.Compare(s.Raw, str.Raw)
+func (n *Null) subtract(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) multiply(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) divide(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) modulo(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) reverse() (Value, error) {
+	return n, nil
 }
 
 type Boolean struct {
@@ -72,6 +94,13 @@ func (b *Boolean) Cmp(v Value) int {
 	}
 }
 
+func (b *Boolean) add(v Value) (Value, error)      { return nil, ErrUnsupported }
+func (b *Boolean) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Boolean) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Boolean) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Boolean) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Boolean) reverse() (Value, error)         { return nil, ErrUnsupported }
+
 type Int struct {
 	Meta
 	Raw int64
@@ -85,6 +114,57 @@ func (i *Int) Cmp(v Value) int {
 	} else {
 		return 0
 	}
+}
+
+func (i *Int) add(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw += asInt(v)
+	return &x, nil
+}
+
+func (i *Int) subtract(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw -= asInt(v)
+	return &x, nil
+}
+
+func (i *Int) multiply(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw *= asInt(v)
+	return &x, nil
+}
+
+func (i *Int) divide(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw /= asInt(v)
+	return &x, nil
+}
+
+func (i *Int) modulo(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw %= asInt(v)
+	return &x, nil
+}
+
+func (i *Int) reverse() (Value, error) {
+	x := *i
+	x.Raw = -x.Raw
+	return &x, nil
 }
 
 type Uint struct {
@@ -102,6 +182,53 @@ func (i *Uint) Cmp(v Value) int {
 	}
 }
 
+func (i *Uint) add(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw += asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) subtract(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw -= asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) multiply(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw *= asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) divide(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw /= asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) modulo(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw %= asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) reverse() (Value, error) { return nil, ErrUnsupported }
+
 type Real struct {
 	Meta
 	Raw float64
@@ -116,6 +243,90 @@ func (r *Real) Cmp(v Value) int {
 		return 0
 	}
 }
+
+func (r *Real) add(v Value) (Value, error) {
+	if !isCompatible(r, v) {
+		return nil, ErrIncompatible
+	}
+	x := *r
+	x.Raw += asReal(v)
+	return &x, nil
+}
+
+func (r *Real) subtract(v Value) (Value, error) {
+	if !isCompatible(r, v) {
+		return nil, ErrIncompatible
+	}
+	x := *r
+	x.Raw -= asReal(v)
+	return &x, nil
+}
+
+func (r *Real) multiply(v Value) (Value, error) {
+	if !isCompatible(r, v) {
+		return nil, ErrIncompatible
+	}
+	x := *r
+	x.Raw *= asReal(v)
+	return &x, nil
+}
+
+func (r *Real) divide(v Value) (Value, error) {
+	if !isCompatible(r, v) {
+		return nil, ErrIncompatible
+	}
+	x := *r
+	x.Raw /= asReal(v)
+	return &x, nil
+}
+
+func (r *Real) modulo(v Value) (Value, error) { return nil, ErrUnsupported }
+
+func (r *Real) reverse() (Value, error) {
+	x := *r
+	x.Raw = -x.Raw
+	return &x, nil
+}
+
+type Bytes struct {
+	Meta
+	Raw []byte
+}
+
+func (b *Bytes) Cmp(v Value) int {
+	str, ok := v.(*Bytes)
+	if !ok {
+		return -1
+	}
+	return bytes.Compare(b.Raw, str.Raw)
+}
+
+func (b *Bytes) add(v Value) (Value, error)      { return nil, ErrUnsupported }
+func (b *Bytes) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Bytes) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Bytes) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Bytes) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Bytes) reverse() (Value, error)         { return nil, ErrUnsupported }
+
+type String struct {
+	Meta
+	Raw string
+}
+
+func (s *String) Cmp(v Value) int {
+	str, ok := v.(*String)
+	if !ok {
+		return -1
+	}
+	return strings.Compare(s.Raw, str.Raw)
+}
+
+func (s *String) add(v Value) (Value, error)      { return nil, ErrUnsupported }
+func (s *String) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
+func (s *String) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
+func (s *String) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (s *String) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (s *String) reverse() (Value, error)         { return nil, ErrUnsupported }
 
 func asReal(v Value) float64 {
 	switch v := v.(type) {
@@ -154,4 +365,39 @@ func asInt(v Value) int64 {
 	default:
 		return 0
 	}
+}
+
+func asBool(v Value) bool {
+	switch v := v.(type) {
+	case *Boolean:
+		return v.Raw
+	case *Int:
+		return v.Raw != 0
+	case *Uint:
+		return v.Raw != 0
+	case *String:
+		return len(v.Raw) > 0
+	case *Bytes:
+		return len(v.Raw) > 0
+	default:
+		return false
+	}
+}
+
+func null2null(v Value) (Value, error) {
+	if _, ok := v.(*Null); ok {
+		return v, nil
+	}
+	return nil, ErrIncompatible
+}
+
+func isCompatible(left, right Value) bool {
+	for _, v := range []Value{left, right} {
+		switch v.(type) {
+		case *Int, *Uint, *Real:
+		default:
+			return false
+		}
+	}
+	return true
 }

@@ -26,6 +26,7 @@ const (
 	Mul
 	Div
 	Min
+	Modulo
 	And
 	Or
 	Not
@@ -57,6 +58,7 @@ const (
 	add        = '+'
 	mul        = '*'
 	div        = '/'
+	question   = '?'
 )
 
 func init() {
@@ -194,6 +196,8 @@ func (t Token) String() string {
 	switch t.Type {
 	case EOF:
 		return "eof"
+	case Modulo:
+		return "%"
 	case Add:
 		return "+"
 	case Min:
@@ -264,6 +268,8 @@ func TokenString(t Token) string {
 		lit = t.Literal
 	)
 	switch t.Type {
+	case Modulo:
+		return "<modulo>"
 	case Add:
 		return "<add>"
 	case Min:
