@@ -579,27 +579,14 @@ func resolveValue(e Expression, root *state) (Value, error) {
 func swapBytes(buf []byte, e string) []byte {
 	if e == kwLittle {
 		dat := make([]byte, len(buf))
-		switch len(buf) {
-		case 2:
-			dat[0], dat[1] = buf[1], buf[0]
-		case 4:
-			dat[0] = buf[3]
-			dat[1] = buf[2]
-			dat[2] = buf[1]
-			dat[3] = buf[0]
-		case 8:
-			dat[0] = buf[7]
-			dat[1] = buf[6]
-			dat[2] = buf[5]
-			dat[3] = buf[4]
-			dat[4] = buf[3]
-			dat[5] = buf[2]
-			dat[6] = buf[1]
-			dat[7] = buf[0]
-		default:
+		if n := len(buf); n <= 8 && n%2 == 0 {
+			for i := 0; i < n; i++ {
+				dat[n-1-i] = buf[i]
+			}
+		} else {
 			copy(dat, buf)
 		}
-		return dat
+		buf = dat
 	}
 	return buf
 }
