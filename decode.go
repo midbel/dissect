@@ -105,7 +105,13 @@ func (root *state) decodeBlock(data Block) error {
 		case ExitStmt:
 			return root.decodeExit(n)
 		case LetStmt:
-			// ignore for now
+			val, err := root.decodeLet(n)
+			if err != nil {
+				return err
+			}
+			if val != nil {
+				root.Values = append(root.Values, val)
+			}
 		case DelStmt:
 			for _, n := range n.nodes {
 				r, ok := n.(Reference)
@@ -275,6 +281,10 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 		return nil, fmt.Errorf("unsupported type: %s", p.is())
 	}
 	return raw, nil
+}
+
+func (root *state) decodeLet(e LetStmt) (Value, error) {
+	return nil, nil
 }
 
 func (root *state) decodeExit(e ExitStmt) error {

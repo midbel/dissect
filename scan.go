@@ -7,7 +7,16 @@ import (
 	"sort"
 )
 
+type ScanMode int
+
+const (
+	scanDefault ScanMode = iota
+	scanExpr
+)
+
 type Scanner struct {
+	mode ScanMode
+
 	buffer []byte
 	pos    int
 	next   int
@@ -50,6 +59,7 @@ func (s *Scanner) Scan() Token {
 		Line:   s.line,
 		Column: s.column,
 	}
+	
 	switch {
 	case isLetter(s.char):
 		s.scanIdent(&tok)

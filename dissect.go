@@ -22,6 +22,10 @@ const (
 	LessEq
 	Greater
 	GreatEq
+	Add
+	Mul
+	Div
+	Min
 	And
 	Or
 	Not
@@ -40,7 +44,6 @@ const (
 	colon      = ':'
 	equal      = '='
 	newline    = '\n'
-	minus      = '-'
 	underscore = '_'
 	pound      = '#'
 	dot        = '.'
@@ -50,6 +53,10 @@ const (
 	quote      = '"'
 	ampersand  = '&'
 	pipe       = '|'
+	minus      = '-'
+	add        = '+'
+	mul        = '*'
+	div        = '/'
 )
 
 func init() {
@@ -63,24 +70,6 @@ type ExitError struct {
 func (e *ExitError) Error() string {
 	return strconv.Itoa(int(e.code))
 }
-
-type Endianess uint8
-
-func (e Endianess) String() string {
-	switch e {
-	default:
-		return "<endianess: unknown>"
-	case bigEndian:
-		return kwBig
-	case littleEndian:
-		return kwLittle
-	}
-}
-
-const (
-	bigEndian Endianess = iota
-	littleEndian
-)
 
 type Kind uint8
 
@@ -205,6 +194,14 @@ func (t Token) String() string {
 	switch t.Type {
 	case EOF:
 		return "eof"
+	case Add:
+		return "+"
+	case Min:
+		return "-"
+	case Mul:
+		return "*"
+	case Div:
+		return "/"
 	case And:
 		return "&&"
 	case Or:
@@ -244,6 +241,10 @@ func (t Token) isIdent() bool {
 	return t.Type == Ident || t.Type == Text
 }
 
+func (t Token) isArithmetic() bool {
+	return t.Type == Add || t.Type == Min || t.Type == Div || t.Type == Mul
+}
+
 func (t Token) isLogical() bool {
 	return t.Type == And || t.Type == Or || t.Type == Not
 }
@@ -263,6 +264,14 @@ func TokenString(t Token) string {
 		lit = t.Literal
 	)
 	switch t.Type {
+	case Add:
+		return "<add>"
+	case Min:
+		return "<subtract>"
+	case Div:
+		return "<divide>"
+	case Mul:
+		return "<multiply>"
 	case Not:
 		return "<not>"
 	case And:

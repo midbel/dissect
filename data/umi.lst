@@ -1,37 +1,23 @@
 import (
   "src/github.com/midbel/dissect/data/enums.lst"
-)
-
-declare (
-  coarse: uint 32
-  fine  : uint 8
-)
-
-block time (
-  coarse
-  fine
-)
-
-block pid (
-  dass  : uint 8, DaSS
-  orbit : uint 16
-  state : uint 16, State
-  code  : bytes 6
-)
-
-block about (
-  type  : uint 8, Type
-  unit  : uint 16
+  "src/github.com/midbel/dissect/data/time.lst"
 )
 
 data(
   size  : uint 32 little
 
-  include pid
-  include about
-  include time
+  dass  : uint 8, DaSS
+  orbit : uint 16
+  state : uint 16, State
+  code  : bytes 6
+
+  type  : uint 8, Type
+  unit  : uint 16
+
+  include time5
 
   length: uint 16
+  let bitlen = length * 8
 
   match type with (
     1 = (

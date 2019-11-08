@@ -1,3 +1,7 @@
+import (
+  "src/github.com/midbel/dissect/data/time.lst"
+)
+
 enum Type (
   0 = System
   1 = Payload
@@ -43,16 +47,12 @@ enum Apid (
   906 = "DHPU"
   907 = "MMIA"
   908 = "MXGS"
+  909 = "H&S"
   620 = "Response"
 )
 
 enum DataType (
   9 = Telemetry
-)
-
-declare (
-  coarse: uint 32
-  fine  : uint 8
 )
 
 define (
@@ -71,13 +71,8 @@ block segment (
   sequence: uint 14
 )
 
-block time (
-  coarse
-  fine
-)
-
 block secondary (
-  include time
+  include time5
   timeid  : 2, TimeType
   checksum: 1
   spare   : 1
@@ -95,7 +90,7 @@ block private (
 data (
   size: uint 32
   type: uint 8, DataType
-  include time
+  include time5
 
   include pid
   include segment
