@@ -35,22 +35,22 @@ data(
 
   match type with (
     1 = (
-      param: int 32
+      param as int with 32
     )
     2 = (
-      param: float 64
+      param as float with 64
     )
     3 = (
-      param: bytes 8
+      param as bytes with length
     )
     4 = (
-      param: int 32
+      param as int with 32
     )
     5 = (
-      param: string 8
+      param as string with length
     )
     6 = (
-      param: int 64
+      param as int with 64
     )
     14 = (
       seek 7

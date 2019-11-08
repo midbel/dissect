@@ -58,7 +58,7 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 	err := s.decodeBlock(d.data)
 
 	var exit *ExitError
-	if err != nil  && errors.As(err, &exit) {
+	if err != nil && errors.As(err, &exit) {
 		if exit.code == 0 {
 			err = nil
 		}
@@ -166,12 +166,25 @@ func (root *state) decodeBlock(data Block) error {
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {
 	var (
-		bits   = p.numbit()
+		bits   int
 		offset = root.Pos % numbit
 		index  = root.Pos / numbit
 	)
 	if index >= root.Size {
 		return nil, ErrDone
+	}
+	switch p.size.Type {
+	case Ident, Text:
+		v, err := root.ResolveValue(p.size.Literal)
+		if err != nil {
+			return nil, err
+		}
+		bits = int(asInt(v))
+	case Integer:
+		v, _ := strconv.ParseInt(p.size.Literal, 0, 64)
+		bits = int(v)
+	default:
+		return nil, fmt.Errorf("unexpected token type")
 	}
 	var (
 		err error

@@ -136,6 +136,7 @@ const (
 	kwBytes   = "bytes"
 	kwMatch   = "match"
 	kwWith    = "with"
+	kwAs      = "as"
 	kwBig     = "big"
 	kwLittle  = "little"
 )
@@ -162,6 +163,7 @@ var keywords = []string{
 	kwBytes,
 	kwMatch,
 	kwWith,
+	kwAs,
 	kwBig,
 	kwLittle,
 }
