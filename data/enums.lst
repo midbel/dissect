@@ -1,0 +1,38 @@
+enum DaSS (
+  0 = "no value"
+  1 = "same value"
+  2 = "new value"
+  3 = "latest value"
+  4 = "unavailable"
+)
+
+enum State (
+  0     = nominal
+  1     = missing
+  2     = dead
+  4     = offScaleHigh
+  8     = offScaleLow
+  16    = static
+  128   = unavailable
+  2048  = exception
+  8192  = change
+  32768 = override
+)
+
+enum Type (
+  1   = "int32"
+  2   = "float64"
+  3   = "binary8"
+  4   = "reference"
+  5   = "string8"
+  6   = "long"
+  7   = "decimal"
+  8   = "real"
+  9   = "exponent"
+  10  = "time"
+  11  = "datetime"
+  12  = "stringN"
+  13  = "binaryN"
+  14  = "bit"
+  255 = "bytearray"
+)

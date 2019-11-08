@@ -55,7 +55,7 @@ func init() {
 	sort.Strings(keywords)
 }
 
-type Endianess uin8
+type Endianess uint8
 
 func (e Endianess) String() string {
 	switch e {

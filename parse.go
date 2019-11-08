@@ -38,7 +38,8 @@ func bindPower(tok Token) int {
 }
 
 type Parser struct {
-	scan *Scanner
+	// scan *Scanner
+	frames []*frame
 
 	curr Token
 	peek Token
@@ -47,12 +48,7 @@ type Parser struct {
 }
 
 func Parse(r io.Reader) (Node, error) {
-	scan, err := Scan(r)
-	if err != nil {
-		return nil, err
-	}
-	p := Parser{scan: scan}
-
+	var p Parser
 	p.kwords = map[string]func() (Node, error){
 		kwData:    p.parseData,
 		kwBlock:   p.parseBlock,
@@ -61,6 +57,9 @@ func Parse(r io.Reader) (Node, error) {
 		kwPoly:    p.parsePair,
 		kwDeclare: p.parseDeclare,
 		kwDefine:  p.parseDefine,
+	}
+	if err := p.pushFrame(r); err != nil {
+		return nil, err
 	}
 
 	p.nextToken()
@@ -87,11 +86,9 @@ func (p *Parser) Parse() (Node, error) {
 
 	p.skipComment()
 	if p.curr.Type == Keyword && p.curr.Literal == kwImport {
-		ns, err := p.parseImport()
-		if err != nil {
+		if err := p.parseImport(); err != nil {
 			return nil, err
 		}
-		root.nodes = append(root.nodes, ns...)
 	}
 
 	for {
@@ -605,27 +602,23 @@ func (p *Parser) parseDefine() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseImport() ([]Node, error) {
+func (p *Parser) parseImport() error {
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	p.nextToken()
 
-	var nodes []Node
+	var files []string
 	for !p.isDone() {
 		p.skipComment()
 		if p.curr.Type == rparen {
 			break
 		}
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		ns, err := p.parseFile(p.curr.Literal)
-		if err != nil {
-			return nil, err
-		}
-		nodes = append(nodes, ns...)
+		files = append(files, p.curr.Literal)
 
 		p.nextToken()
 		switch p.curr.Type {
@@ -634,11 +627,22 @@ func (p *Parser) parseImport() ([]Node, error) {
 		case Newline:
 			p.nextToken()
 		default:
-			return nil, fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 	}
 	p.nextToken()
-	return nodes, nil
+	for _, f := range files {
+		r, err := os.Open(f)
+		if err != nil {
+			return err
+		}
+		err = p.pushFrame(r)
+		r.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *Parser) parseFile(file string) ([]Node, error) {
@@ -701,7 +705,7 @@ func (p *Parser) parsePair() (Node, error) {
 }
 
 func (p *Parser) isDone() bool {
-	return p.curr.Type == EOF
+	return len(p.frames) == 0 || p.curr.Type == EOF
 }
 
 func (p *Parser) skipComment() {
@@ -717,8 +721,47 @@ func (p *Parser) skipToken(typ rune) {
 }
 
 func (p *Parser) nextToken() {
+	n := len(p.frames)
+	if n == 0 {
+		return
+	}
+	n--
+
 	p.curr = p.peek
-	p.peek = p.scan.Scan()
+	p.peek = p.frames[n].Scan()
+	if n -= 1; p.peek.Type == EOF && n >= 0 {
+		p.popFrame()
+		p.peek = p.frames[n].Scan()
+	}
+}
+
+func (p *Parser) pushFrame(r io.Reader) error {
+	s, err := Scan(r)
+	if err == nil {
+		f := &frame{Scanner: s}
+		f.Scan()
+		p.frames = append(p.frames, f)
+	}
+	return err
+}
+
+func (p *Parser) popFrame() {
+	n := len(p.frames)
+	if n == 0 {
+		return
+	}
+	p.frames = p.frames[:n-1]
+}
+
+type frame struct {
+	curr Token
+	*Scanner
+}
+
+func (f *frame) Scan() Token {
+	tok := f.curr
+	f.curr = f.Scanner.Scan()
+	return tok
 }
 
 func merge(dat, root Block) (Node, error) {

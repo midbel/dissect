@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -201,13 +201,13 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	case kindBytes:
 		raw = &Bytes{
 			Meta: meta,
-			Raw: root.buffer[index:index+need],
+			Raw:  root.buffer[index : index+need],
 		}
 	case kindString:
-		str := root.buffer[index:index+need]
+		str := root.buffer[index : index+need]
 		raw = &String{
 			Meta: meta,
-			Raw: strings.Trim(string(str), "\x00"),
+			Raw:  strings.Trim(string(str), "\x00"),
 		}
 	default:
 		return nil, fmt.Errorf("unsupported type: %s", p.is())
