@@ -56,6 +56,13 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 	}
 	s.buffer = append(s.buffer, buf...)
 	err := s.decodeBlock(d.data)
+
+	var exit *ExitError
+	if err != nil  && errors.As(err, &exit) {
+		if exit.code == 0 {
+			err = nil
+		}
+	}
 	if err != nil && !errors.Is(err, ErrDone) {
 		return nil, err
 	}
@@ -95,6 +102,8 @@ func (s *state) DeleteValue(n string) {
 func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
+		case ExitStmt:
+			return root.decodeExit(n)
 		case LetStmt:
 			// ignore for now
 		case DelStmt:
@@ -250,6 +259,26 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 		return nil, fmt.Errorf("unsupported type: %s", p.is())
 	}
 	return raw, nil
+}
+
+func (root *state) decodeExit(e ExitStmt) error {
+	var code int64
+	switch e.code.Type {
+	case Integer:
+		code, _ = strconv.ParseInt(e.code.Literal, 0, 64)
+	case Float:
+		f, _ := strconv.ParseFloat(e.code.Literal, 64)
+		code = int64(f)
+	case Ident, Text:
+		v, err := root.ResolveValue(e.code.Literal)
+		if err != nil {
+			return err
+		}
+		code = asInt(v)
+	default:
+		return fmt.Errorf("unexpected token type")
+	}
+	return &ExitError{code}
 }
 
 func (root *state) decodeMatch(n Match) error {

@@ -3,6 +3,7 @@ package dissect
 import (
 	"fmt"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -53,6 +54,14 @@ const (
 
 func init() {
 	sort.Strings(keywords)
+}
+
+type ExitError struct {
+	code int64
+}
+
+func (e *ExitError) Error() string {
+	return strconv.Itoa(int(e.code))
 }
 
 type Endianess uint8
