@@ -67,6 +67,7 @@ data(
   include time
 
   length: uint 16
+  #let bits = bytes2bits(length)
 
   match type with (
     1 = (

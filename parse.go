@@ -87,11 +87,11 @@ func (p *Parser) Parse() (Node, error) {
 
 	p.skipComment()
 	if p.curr.Type == Keyword && p.curr.Literal == kwImport {
-		n, err := p.parseImport()
+		ns, err := p.parseImport()
 		if err != nil {
 			return nil, err
 		}
-		root.nodes = append(root.nodes, n)
+		root.nodes = append(root.nodes, ns...)
 	}
 
 	for {
@@ -483,6 +483,13 @@ func (p *Parser) parseField() (node Node, err error) {
 			a.size = p.curr
 			p.nextToken()
 		}
+		if p.curr.Type == Keyword {
+			if p.curr.Literal == kwBig || p.curr.Literal == kwLittle {
+			} else {
+				return nil, fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			p.nextToken()
+		}
 		if p.curr.Type == comma {
 			p.nextToken()
 			if !p.curr.isIdent() {
@@ -598,20 +605,14 @@ func (p *Parser) parseDefine() (Node, error) {
 	return b, nil
 }
 
-func (p *Parser) parseImport() (Node, error) {
-	pos := p.curr.Pos()
+func (p *Parser) parseImport() ([]Node, error) {
 	p.nextToken()
 	if p.curr.Type != lparen {
 		return nil, fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	p.nextToken()
 
-	tok := Token{
-		Literal: kwImport,
-		Type:    Keyword,
-		pos:     pos,
-	}
-	ns := Block{id: tok}
+	var nodes []Node
 	for !p.isDone() {
 		p.skipComment()
 		if p.curr.Type == rparen {
@@ -620,11 +621,11 @@ func (p *Parser) parseImport() (Node, error) {
 		if !p.curr.isIdent() {
 			return nil, fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		n, err := p.parseFile(p.curr.Literal)
+		ns, err := p.parseFile(p.curr.Literal)
 		if err != nil {
 			return nil, err
 		}
-		ns.nodes = append(ns.nodes, n)
+		nodes = append(nodes, ns...)
 
 		p.nextToken()
 		switch p.curr.Type {
@@ -637,10 +638,10 @@ func (p *Parser) parseImport() (Node, error) {
 		}
 	}
 	p.nextToken()
-	return ns, nil
+	return nodes, nil
 }
 
-func (p *Parser) parseFile(file string) (Node, error) {
+func (p *Parser) parseFile(file string) ([]Node, error) {
 	r, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -653,7 +654,7 @@ func (p *Parser) parseFile(file string) (Node, error) {
 	if !ok {
 		return nil, fmt.Errorf("%s: unexpected node type %T", filepath.Base(file), n)
 	}
-	return root, nil
+	return root.nodes, nil
 }
 
 func (p *Parser) parseBlock() (Node, error) {

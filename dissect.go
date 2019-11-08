@@ -55,6 +55,24 @@ func init() {
 	sort.Strings(keywords)
 }
 
+type Endianess uin8
+
+func (e Endianess) String() string {
+	switch e {
+	default:
+		return "<endianess: unknown>"
+	case bigEndian:
+		return kwBig
+	case littleEndian:
+		return kwLittle
+	}
+}
+
+const (
+	bigEndian Endianess = iota
+	littleEndian
+)
+
 type Kind uint8
 
 func (k Kind) String() string {

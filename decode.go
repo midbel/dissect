@@ -404,8 +404,8 @@ func evalPoly(cs []Constant, v Value) Value {
 		eng float64
 	)
 	for _, c := range cs {
-		pow, _ := strconv.ParseFloat(c.id.Literal, 64)
-		mul, _ := strconv.ParseFloat(c.value.Literal, 64)
+		mul, _ := strconv.ParseFloat(c.id.Literal, 64)
+		pow, _ := strconv.ParseFloat(c.value.Literal, 64)
 
 		eng += mul * math.Pow(raw, pow)
 	}
