@@ -508,6 +508,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 	}
 	if p.curr.Type == Keyword {
 		if p.curr.Literal == kwBig || p.curr.Literal == kwLittle {
+			a.endian = p.curr
 		} else {
 			return nil, fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}

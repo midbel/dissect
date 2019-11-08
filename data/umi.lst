@@ -25,7 +25,7 @@ block about (
 )
 
 data(
-  size  : uint 32
+  size  : uint 32 little
 
   include pid
   include about
