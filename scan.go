@@ -201,6 +201,14 @@ func (s *Scanner) scanIdent(tok *Token) {
 
 func (s *Scanner) scanOperator(tok *Token) {
 	switch peek := s.peekByte(); {
+	case s.char == add:
+		tok.Type = Add
+	case s.char == mul:
+		tok.Type = Mul
+	case s.char == div:
+		tok.Type = Div
+	case s.char == minus:
+		tok.Type = Min
 	case s.char == equal:
 		tok.Type = Assign
 		if peek == s.char {
@@ -213,11 +221,19 @@ func (s *Scanner) scanOperator(tok *Token) {
 			s.readByte()
 			tok.Type = LessEq
 		}
+		if peek == langle {
+			s.readByte()
+			tok.Type = ShiftLeft
+		}
 	case s.char == rangle:
 		tok.Type = Greater
 		if peek == equal {
 			s.readByte()
 			tok.Type = GreatEq
+		}
+		if peek == rangle {
+			s.readByte()
+			tok.Type = ShiftRight
 		}
 	case s.char == bang:
 		if peek := s.peekByte(); peek != equal {
@@ -230,14 +246,16 @@ func (s *Scanner) scanOperator(tok *Token) {
 		s.readByte()
 		tok.Type = And
 		if s.char != ampersand {
-			tok.Type = Illegal
+			tok.Type = BitAnd
 		}
 	case s.char == pipe:
 		s.readByte()
 		tok.Type = Or
 		if s.char != pipe {
-			tok.Type = Illegal
+			tok.Type = BitOr
 		}
+	case s.char == question:
+		tok.Type = Cond
 	}
 }
 
@@ -286,7 +304,7 @@ func isHexa(b byte) bool {
 }
 
 func isOp(b byte) bool {
-	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe
+	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe || b == add || b == div || b == mul || b == minus || b == question
 }
 
 func isComment(b byte) bool {

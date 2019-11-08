@@ -37,7 +37,7 @@ func dumpNode(n Node, level int) error {
 	case ExitStmt:
 		fmt.Printf("%sexit(code=%s, pos=%s)", indent, n.code.Literal, n.Pos())
 	case LetStmt:
-		fmt.Printf("%slet(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
+		fmt.Printf("%slet(name=%s, predicate=%s, pos=%s)", indent, n.id.Literal, n.expr, n.Pos())
 	case DelStmt:
 		fmt.Printf("%sdel(pos=%s) (\n", indent, n.Pos())
 		for _, n := range n.nodes {

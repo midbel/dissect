@@ -204,7 +204,26 @@ func evalRelational(b Binary, root *state) (Value, error) {
 }
 
 func evalBitwise(b Binary, root *state) (Value, error) {
-	return nil, nil
+	left, err := eval(b.Left, root)
+	if err != nil {
+		return nil, err
+	}
+	right, err := eval(b.Right, root)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = left, right
+
+	var val Value
+	switch b.operator {
+	case BitAnd:
+	case BitOr:
+	case ShiftLeft:
+	case ShiftRight:
+	default:
+		err = fmt.Errorf("unsupported bitwise operator")
+	}
+	return val, err
 }
 
 func anonymousBool(ok bool) Value {

@@ -44,7 +44,14 @@ type Unary struct {
 }
 
 func (u Unary) String() string {
-	return fmt.Sprintf("!(%s)", u.Right)
+	switch u.operator {
+	case Not:
+		return fmt.Sprintf("!(%s)", u.Right)
+	case Min:
+		return fmt.Sprintf("-(%s)", u.Right)
+	default:
+		return "<unknown>"
+	}
 }
 
 func (u Unary) Pos() Position {
@@ -90,6 +97,22 @@ func (b Binary) String() string {
 		str.WriteString("||")
 	case And:
 		str.WriteString("&&")
+	case Add:
+		str.WriteString("+")
+	case Min:
+		str.WriteString("-")
+	case Div:
+		str.WriteString("/")
+	case Mul:
+		str.WriteString("*")
+	case BitOr:
+		str.WriteString("|")
+	case BitAnd:
+		str.WriteString("&")
+	case ShiftLeft:
+		str.WriteString("<<")
+	case ShiftRight:
+		str.WriteString(">>")
 	default:
 		return "<unknown>"
 	}
@@ -128,15 +151,15 @@ func (t Ternary) String() string {
 	var b strings.Builder
 
 	b.WriteRune(lparen)
-	b.WriteString(b.cond.String())
+	b.WriteString(t.cond.String())
 	b.WriteRune(space)
 	b.WriteRune(question)
 	b.WriteRune(space)
-	b.WriteRune(b.csq.String())
+	b.WriteString(t.csq.String())
 	b.WriteRune(space)
 	b.WriteRune(colon)
 	b.WriteRune(space)
-	b.WriteRune(b.alt.String())
+	b.WriteString(t.alt.String())
 	b.WriteRune(rparen)
 
 	return b.String()
@@ -187,7 +210,7 @@ func (d DelStmt) Pos() Position {
 
 type LetStmt struct {
 	id   Token
-	expr Node
+	expr Expression
 }
 
 func (t LetStmt) String() string {
