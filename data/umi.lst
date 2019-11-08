@@ -16,7 +16,7 @@ block pid (
   dass  : uint 8, DaSS
   orbit : uint 16
   state : uint 16, State
-  code  : bytes 48
+  code  : bytes 6
 )
 
 block about (
@@ -42,13 +42,13 @@ data(
       param: float 64
     )
     3 = (
-      param: bytes 64
+      param: bytes 8
     )
     4 = (
       param: int 32
     )
     5 = (
-      param: string 64
+      param: string 8
     )
     6 = (
       param: int 64

@@ -164,7 +164,55 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	if index >= root.Size {
 		return nil, ErrDone
 	}
+	var (
+		err error
+		raw Value
+	)
+	switch p.is() {
+	case kindBytes, kindString:
+		if offset != 0 {
+			err = fmt.Errorf("invalid position")
+			break
+		}
+		raw, err = root.decodeBytes(p, bits, index)
+		bits *= numbit
+	default:
+		raw, err = root.decodeNumber(p, bits, index, offset)
+	}
+	if err != nil {
+		return raw, err
+	}
+	root.Pos += bits
+	if err = evalApply(raw, p.apply, root); err != nil {
+		return raw, err
+	}
+	return raw, nil
+}
 
+func (root *state) decodeBytes(p Parameter, bits, index int) (Value, error) {
+	var (
+		meta = Meta{Id: p.id.Literal, Pos: root.Pos}
+		raw  Value
+	)
+	switch p.is() {
+	case kindBytes:
+		raw = &Bytes{
+			Meta: meta,
+			Raw:  root.buffer[index : index+bits],
+		}
+	case kindString:
+		str := root.buffer[index : index+bits]
+		raw = &String{
+			Meta: meta,
+			Raw:  strings.Trim(string(str), "\x00"),
+		}
+	default:
+		return nil, fmt.Errorf("unsupported type: %s", p.is())
+	}
+	return raw, nil
+}
+
+func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, error) {
 	var (
 		need  = numbytes(bits)
 		shift = (numbit * need) - (offset + bits)
@@ -198,24 +246,9 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 			Meta: meta,
 			Raw:  math.Float64frombits(dat),
 		}
-	case kindBytes:
-		raw = &Bytes{
-			Meta: meta,
-			Raw:  root.buffer[index : index+need],
-		}
-	case kindString:
-		str := root.buffer[index : index+need]
-		raw = &String{
-			Meta: meta,
-			Raw:  strings.Trim(string(str), "\x00"),
-		}
 	default:
 		return nil, fmt.Errorf("unsupported type: %s", p.is())
 	}
-	if err := evalApply(raw, p.apply, root); err != nil {
-		return raw, err
-	}
-	root.Pos += bits
 	return raw, nil
 }
 
@@ -260,7 +293,6 @@ func (root *state) decodeMatch(n Match) error {
 	case Block:
 		dat = n
 	default:
-		fmt.Println("here")
 		return fmt.Errorf("unexpected node type %T", n)
 	}
 	if err == nil {

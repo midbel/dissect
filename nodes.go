@@ -165,10 +165,11 @@ func (t LetStmt) Pos() Position {
 }
 
 type Parameter struct {
-	id    Token
-	size  Token
-	kind  Token
-	apply Node
+	id     Token
+	size   Token
+	kind   Token
+	endian Token
+	apply  Node
 }
 
 func (p Parameter) String() string {
