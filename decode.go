@@ -171,7 +171,7 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	switch p.is() {
 	case kindBytes, kindString:
 		if offset != 0 {
-			err = fmt.Errorf("invalid position")
+			err = fmt.Errorf("bytes/string should start at offset 0")
 			break
 		}
 		raw, err = root.decodeBytes(p, bits, index)
