@@ -178,14 +178,14 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		bits *= numbit
 	default:
 		raw, err = root.decodeNumber(p, bits, index, offset)
+		if err == nil {
+			err = evalApply(raw, p.apply, root)
+		}
 	}
 	if err != nil {
 		return raw, err
 	}
 	root.Pos += bits
-	if err = evalApply(raw, p.apply, root); err != nil {
-		return raw, err
-	}
 	return raw, nil
 }
 
