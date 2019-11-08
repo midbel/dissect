@@ -30,6 +30,11 @@ const (
 	And
 	Or
 	Not
+	Cond
+	ShiftLeft
+	ShiftRight
+	BitAnd
+	BitOr
 	Newline
 	Illegal
 )
@@ -196,6 +201,16 @@ func (t Token) String() string {
 	switch t.Type {
 	case EOF:
 		return "eof"
+	case ShiftLeft:
+		return "<<"
+	case ShiftRight:
+		return ">>"
+	case BitOr:
+		return "|"
+	case BitAnd:
+		return "&"
+	case Cond:
+		return "?:"
 	case Modulo:
 		return "%"
 	case Add:
@@ -270,6 +285,16 @@ func TokenString(t Token) string {
 	switch t.Type {
 	case Modulo:
 		return "<modulo>"
+	case BitOr:
+		return "<bor>"
+	case BitAnd:
+		return "<band>"
+	case ShiftLeft:
+		return "<shift left>"
+	case ShiftRight:
+		return "<shift right>"
+	case Cond:
+		return "<conditional>"
 	case Add:
 		return "<add>"
 	case Min:

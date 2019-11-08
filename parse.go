@@ -10,23 +10,35 @@ import (
 
 const (
 	bindLowest int = iota
+	bindCond
 	bindOr
 	bindAnd
+	bindBitOr
+	bindBitAnd
 	bindEq
 	bindRel
-	bindNot
+	bindShift
+	bindSum
+	bindMul
+	bindUnary
 )
 
 var bindings = map[rune]int{
-	Equal:   bindEq,
-	NotEq:   bindEq,
-	Lesser:  bindRel,
-	LessEq:  bindRel,
-	Greater: bindRel,
-	GreatEq: bindRel,
-	And:     bindAnd,
-	Or:      bindOr,
-	Not:     bindNot,
+	Equal:      bindEq,
+	NotEq:      bindEq,
+	Lesser:     bindRel,
+	LessEq:     bindRel,
+	Greater:    bindRel,
+	GreatEq:    bindRel,
+	And:        bindAnd,
+	Or:         bindOr,
+	Add:        bindSum,
+	Min:        bindSum,
+	Mul:        bindMul,
+	Div:        bindMul,
+	Cond:       bindCond,
+	ShiftLeft:  bindShift,
+	ShiftRight: bindShift,
 }
 
 func bindPower(tok Token) int {
@@ -217,13 +229,11 @@ func (p *Parser) parseLet() (Node, error) {
 	if p.curr.Type != Assign {
 		return nil, fmt.Errorf("let: expect =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	p.nextToken()
-	for !p.isDone() {
-		if p.curr.Type == Newline {
-			break
-		}
-		p.nextToken()
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
 	}
+	n.expr = expr
 	return n, nil
 }
 
@@ -268,13 +278,17 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.peek.Type != rsquare && pow < bindPower(p.peek) {
+	for !(p.peek.Type == rsquare || p.peek.Type == Newline) && pow < bindPower(p.peek) {
 		p.nextToken()
-		n, err := p.parseInfix(expr)
+		switch p.curr.Type {
+		case Cond:
+			expr, err = p.parseTernary(expr)
+		default:
+			expr, err = p.parseInfix(expr)
+		}
 		if err != nil {
 			return nil, err
 		}
-		expr = n
 	}
 	if p.peek.Type == rsquare {
 		p.nextToken()
@@ -282,16 +296,42 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 	return expr, nil
 }
 
+func (p *Parser) parseTernary(left Expression) (Expression, error) {
+	t := Ternary{
+		cond: left,
+	}
+	p.nextToken()
+	csq, err := p.parseExpression(bindLowest)
+	if err != nil {
+		return nil, err
+	}
+	p.nextToken()
+	if p.curr.Type != colon {
+		return nil, fmt.Errorf("ternary: expected :, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	alt, err := p.parseExpression(bindLowest)
+	if err != nil {
+		return nil, err
+	}
+
+	t.csq, t.alt = csq, alt
+	return t, nil
+}
+
 func (p *Parser) parsePrefix() (Expression, error) {
 	var expr Expression
 	switch p.curr.Type {
-	case Not:
+	case Not, Min:
 		p.nextToken()
-		right, err := p.parseExpression(bindNot)
+		right, err := p.parseExpression(bindUnary)
 		if err != nil {
 			return nil, err
 		}
-		expr = Unary{Right: right}
+		expr = Unary{
+			Right:    right,
+			operator: p.curr.Type,
+		}
 	case lparen:
 		p.nextToken()
 		n, err := p.parseExpression(bindLowest)
