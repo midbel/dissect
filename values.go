@@ -23,6 +23,8 @@ type Value interface {
 	divide(v Value) (Value, error)
 	modulo(v Value) (Value, error)
 	reverse() (Value, error)
+
+	setId(string)
 }
 
 type Meta struct {
@@ -37,6 +39,10 @@ func (m *Meta) Set(v Value) {
 
 func (m *Meta) String() string {
 	return m.Id
+}
+
+func (m *Meta) setId(s string) {
+	m.Id = s
 }
 
 type Null struct {
