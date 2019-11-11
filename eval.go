@@ -22,6 +22,8 @@ func eval(e Expression, root *state) (Value, error) {
 		v, err = evalLiteral(e, root)
 	case Identifier:
 		v, err = evalIdentifier(e, root)
+	case Assignment:
+		v, err = evalAssign(e, root)
 	default:
 		err = fmt.Errorf("unsupported expression type %T", e)
 	}
@@ -40,6 +42,15 @@ func evalTernary(t Ternary, root *state) (Value, error) {
 	}
 }
 
+func evalAssign(a Assignment, root *state) (Value, error) {
+	v, err := eval(a.right, root)
+	if err != nil {
+		return nil, err
+	}
+	v.setId(a.left.String())
+	return v, nil
+}
+
 func evalBinary(b Binary, root *state) (Value, error) {
 	switch b.operator {
 	case Equal, NotEq, Lesser, LessEq, Greater, GreatEq:
@@ -48,6 +59,8 @@ func evalBinary(b Binary, root *state) (Value, error) {
 		return evalLogical(b, root)
 	case Add, Mul, Div, Min:
 		return evalArithmetic(b, root)
+	case Assign:
+		return nil, nil
 	default:
 		return evalBitwise(b, root)
 	}

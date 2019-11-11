@@ -63,6 +63,33 @@ func (u Unary) exprNode() Node {
 	return u
 }
 
+type Assignment struct {
+	left  Identifier
+	right Expression
+}
+
+func (a Assignment) Pos() Position {
+	return a.left.Pos()
+}
+
+func (a Assignment) String() string {
+	var b strings.Builder
+
+	b.WriteRune(lparen)
+	b.WriteString(a.left.String())
+	b.WriteRune(space)
+	b.WriteRune(equal)
+	b.WriteRune(space)
+	b.WriteString(a.right.String())
+	b.WriteRune(rparen)
+
+	return b.String()
+}
+
+func (a Assignment) exprNode() Node {
+	return a
+}
+
 type Binary struct {
 	Left     Expression
 	Right    Expression

@@ -277,11 +277,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 }
 
 func (root *state) decodeLet(e LetStmt) (Value, error) {
-	v, err := eval(e.expr, root)
-	if err == nil {
-		v.setId(e.id.Literal)
-	}
-	return v, err
+	return eval(e.expr, root)
 }
 
 func (root *state) decodeExit(e ExitStmt) error {

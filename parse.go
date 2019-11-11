@@ -10,6 +10,7 @@ import (
 
 const (
 	bindLowest int = iota
+	bindAssign
 	bindCond
 	bindOr
 	bindAnd
@@ -24,6 +25,7 @@ const (
 )
 
 var bindings = map[rune]int{
+	Assign:     bindAssign,
 	Equal:      bindEq,
 	NotEq:      bindEq,
 	Lesser:     bindRel,
@@ -223,12 +225,7 @@ func (p *Parser) parseSeek() (Node, error) {
 }
 
 func (p *Parser) parseLet() (Node, error) {
-	p.nextToken()
-	n := LetStmt{id: p.curr}
-	p.nextToken()
-	if p.curr.Type != Assign {
-		return nil, fmt.Errorf("let: expect =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-	}
+	n := LetStmt{id: p.peek}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -283,6 +280,8 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 		switch p.curr.Type {
 		case Cond:
 			expr, err = p.parseTernary(expr)
+		case Assign:
+			expr, err = p.parseAssign(expr)
 		default:
 			expr, err = p.parseInfix(expr)
 		}
@@ -294,6 +293,25 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 		p.nextToken()
 	}
 	return expr, nil
+}
+
+func (p *Parser) parseAssign(left Expression) (Expression, error) {
+	p.nextToken()
+	right, err := p.parseExpression(bindLowest)
+	if err != nil {
+		return nil, err
+	}
+
+	switch left := left.(type) {
+	case Identifier:
+		a := Assignment{
+			left:  left,
+			right: right,
+		}
+		return a, nil
+	default:
+		return nil, fmt.Errorf("assign: unexpected token")
+	}
 }
 
 func (p *Parser) parseTernary(left Expression) (Expression, error) {
