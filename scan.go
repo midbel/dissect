@@ -63,7 +63,7 @@ func (s *Scanner) Scan() Token {
 	switch {
 	case isLetter(s.char):
 		s.scanIdent(&tok)
-	case isDigit(s.char) || s.char == minus:
+	case isDigit(s.char): // || s.char == minus:
 		s.scanNumber(&tok)
 	case isComment(s.char):
 		s.scanComment(&tok)
@@ -125,9 +125,7 @@ func (s *Scanner) scanNumber(tok *Token) {
 		nodot  bool
 		accept func(byte) bool
 	)
-	if s.char == minus {
-		s.readByte()
-	}
+
 	if s.char == '0' {
 		switch peek := s.peekByte(); peek {
 		case 'x', 'X':
