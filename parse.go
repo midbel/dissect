@@ -57,9 +57,9 @@ type Parser struct {
 	curr Token
 	peek Token
 
-	stmts   map[string]func() (Node, error)
-	kwords  map[string]func() (Node, error)
-	blockid string
+	stmts  map[string]func() (Node, error)
+	kwords map[string]func() (Node, error)
+	blocks []string
 }
 
 func Parse(r io.Reader) (Node, error) {
@@ -127,12 +127,12 @@ func (p *Parser) Parse() (Node, error) {
 		if !ok {
 			return nil, fmt.Errorf("parse: unknown keyword: %s (ùs)", p.curr.Literal, p.curr.Pos())
 		}
-		p.blockid = p.curr.Literal
+		p.pushBlock(p.curr.Literal)
 		n, err := parse()
 		if err != nil {
 			return nil, err
 		}
-		p.blockid = ""
+		p.popBlock()
 		if n != nil {
 			root.nodes = append(root.nodes, n)
 		}
@@ -146,9 +146,9 @@ func (p *Parser) parsePrint() (Node, error) {
 }
 
 func (p *Parser) parseBreak() (Node, error) {
-	// if p.blockid != kwRepeat {
-	// 	return nil, fmt.Errorf("break: unexpected outside of repeat block (%s)", p.curr.Pos())
-	// }
+	if id := p.currentBlock(); id != kwRepeat {
+		return nil, fmt.Errorf("break: unexpected outside of repeat block (%s)", p.curr.Pos())
+	}
 	b := Break{
 		pos: p.curr.Pos(),
 	}
@@ -177,12 +177,13 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		)
 		switch p.curr.Type {
 		case Keyword:
-			// p.blocks = append(p.blocks, p.curr.Literal)
 			parse, ok := p.stmts[p.curr.Literal]
 			if !ok {
 				fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())
 			}
+			p.pushBlock(p.curr.Literal)
 			node, err = parse()
+			p.popBlock()
 		case Ident, Text:
 			node, err = p.parseField()
 		default:
@@ -612,7 +613,7 @@ func (p *Parser) parseField() (node Node, err error) {
 	case colon:
 		node, err = p.parseFieldShort(id)
 	case Keyword:
-		if p.blockid != kwData {
+		if id := p.currentBlock(); id != kwData {
 			err = fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 			break
 		}
@@ -679,7 +680,7 @@ func (p *Parser) parseAssignment() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type == colon {
-		if id := p.blockid; id == kwEnum || id == kwPoly || id == kwPoint {
+		if id := p.currentBlock(); id == kwEnum || id == kwPoly || id == kwPoint {
 			return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 		p.nextToken()
@@ -861,6 +862,26 @@ func (p *Parser) skipToken(typ rune) {
 	for p.curr.Type == typ {
 		p.nextToken()
 	}
+}
+
+func (p *Parser) currentBlock() string {
+	n := len(p.blocks)
+	if n == 0 {
+		return ""
+	}
+	return p.blocks[n-1]
+}
+
+func (p *Parser) pushBlock(id string) {
+	p.blocks = append(p.blocks, id)
+}
+
+func (p *Parser) popBlock() {
+	n := len(p.blocks)
+	if n == 0 {
+		return
+	}
+	p.blocks = p.blocks[:n-1]
 }
 
 func (p *Parser) nextToken() {
