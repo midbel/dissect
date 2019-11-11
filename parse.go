@@ -140,6 +140,25 @@ func (p *Parser) Parse() (Node, error) {
 	return root, nil
 }
 
+func (p *Parser) parsePrint() (Node, error) {
+	p.nextToken()
+	return nil, nil
+}
+
+func (p *Parser) parseBreak() (Node, error) {
+	// if p.blockid != kwRepeat {
+	// 	return nil, fmt.Errorf("break: unexpected outside of repeat block (%s)", p.curr.Pos())
+	// }
+	b := Break{
+		pos: p.curr.Pos(),
+	}
+	p.nextToken()
+	if p.curr.Type != Newline {
+		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	return b, nil
+}
+
 func (p *Parser) parseStatements() ([]Node, error) {
 	if p.curr.Type != lparen {
 		return nil, fmt.Errorf("statement: expected (, got %s (%s)", p.curr, p.curr.Pos())
@@ -158,6 +177,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		)
 		switch p.curr.Type {
 		case Keyword:
+			// p.blocks = append(p.blocks, p.curr.Literal)
 			parse, ok := p.stmts[p.curr.Literal]
 			if !ok {
 				fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())

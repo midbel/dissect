@@ -196,6 +196,30 @@ func (t Ternary) exprNode() Node {
 	return t
 }
 
+type Print struct {
+	file Token
+}
+
+func (p Print) Pos() Position {
+	return p.file.Pos()
+}
+
+func (p Print) String() string {
+	return p.file.Literal
+}
+
+type Break struct {
+	pos Position
+}
+
+func (b Break) Pos() Position {
+	return b.pos
+}
+
+func (b Break) String() string {
+	return "break"
+}
+
 type ExitStmt struct {
 	pos  Position
 	code Token
