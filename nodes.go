@@ -195,26 +195,11 @@ func (t Ternary) exprNode() Node {
 	return t
 }
 
-type Line struct {
-	pos   Position
-	nodes []Node
-}
-
-func (i Line) Pos() Position {
-	return i.pos
-}
-
-func (i Line) String() string {
-	var b strings.Builder
-	for _, n := range i.nodes {
-		b.WriteString(n.String())
-	}
-	return b.String()
-}
-
 type Print struct {
-	file  Token
-	lines []Line
+	file   Token
+	format Token
+	values []Token
+	fields []Token
 }
 
 func (p Print) Pos() Position {

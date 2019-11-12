@@ -44,9 +44,10 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
     )
   )
 
-  print (
-    "eng: " coarse.eng
-    "raw: " coarse.raw
-    "pos: " coarse.pos
+  print <file> <format:csv, rec, xml, json> <values...> (
+    id
+    pos
+    eng
+    raw
   )
 )

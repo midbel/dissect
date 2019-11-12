@@ -23,17 +23,6 @@ func dumpNode(n Node, level int) error {
 	indent := strings.Repeat(" ", level*2)
 	switch n := n.(type) {
 	case Print:
-		file := n.file.Literal
-		if file == "" {
-			file = "-"
-		}
-		fmt.Printf("%sprint(file=%s, pos=%s) (\n", indent, file, n.Pos())
-		for _, n := range n.lines {
-			dumpNode(n, level+1)
-		}
-		fmt.Printf("%s)", indent)
-	case Line:
-		fmt.Printf("%sline(line=%s, pos=%s)", indent, n.String(), n.Pos())
 	case Data:
 		fs := make([]string, len(n.files))
 		for i := 0; i < len(n.files); i++ {

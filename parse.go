@@ -131,63 +131,7 @@ func (p *Parser) Parse() (Node, error) {
 }
 
 func (p *Parser) parsePrint() (Node, error) {
-	p.nextToken()
-
-	var f Print
-	if p.curr.isIdent() {
-		f.file = p.curr
-		p.nextToken()
-	}
-	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("print: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-	}
-	p.nextToken()
-	for !p.isDone() {
-		p.skipComment()
-		if p.curr.Type == rparen {
-			break
-		}
-		i, err := p.parseLine()
-		if err != nil {
-			return nil, err
-		}
-		f.lines = append(f.lines, i)
-	}
-	p.nextToken()
-	return f, nil
-}
-
-func (p *Parser) parseLine() (Line, error) {
-	var ns []Node
-	for !p.isDone() {
-		if p.curr.Type == Newline {
-			break
-		}
-		var n Node
-		if p.curr.Type == Ident {
-			ref := Reference{id: p.curr}
-			p.nextToken()
-			if p.curr.Type != dot {
-				return Line{}, fmt.Errorf("line: expected ., got %s (%s)", TokenString(p.curr), p.curr.Pos())
-			}
-			p.nextToken()
-			if p.curr.Type != Ident {
-				return Line{}, fmt.Errorf("line: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-			}
-
-			n = Attr{
-				ref:  ref,
-				attr: p.curr,
-			}
-		} else {
-			n = p.curr
-		}
-		ns = append(ns, n)
-		p.nextToken()
-	}
-	i := Line{nodes: ns}
-	p.nextToken()
-	return i, nil
+	return nil, fmt.Printf("print: not yet implemented")
 }
 
 func (p *Parser) parseContinue() (Node, error) {

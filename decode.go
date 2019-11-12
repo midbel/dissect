@@ -186,58 +186,7 @@ func (root *state) decodeBlock(data Block) error {
 }
 
 func (root *state) decodePrint(p Print) error {
-	var (
-		b bytes.Buffer
-		w io.Writer
-	)
-	if n := p.file.Literal; n == "" || n == "-" {
-		w = os.Stdout
-	} else {
-		if _, ok := root.files[n]; !ok {
-			f, err := os.Create(n)
-			if err != nil {
-				return err
-			}
-			root.files[n] = f
-		}
-		w = root.files[n]
-	}
-	for _, i := range p.lines {
-		str, err := root.decodeLine(i)
-		if err != nil {
-			return err
-		}
-		if str != "" {
-			b.WriteString(str)
-		}
-	}
-	_, err := io.Copy(w, &b)
-	return err
-}
-
-func (root *state) decodeLine(i Line) (string, error) {
-	var b bytes.Buffer
-	for _, n := range i.nodes {
-		switch n := n.(type) {
-		case Token:
-			b.WriteString(n.Literal)
-		case Attr:
-			_, err := root.ResolveValue(n.ref.id.Literal)
-			if err != nil {
-				return "", err
-			}
-			// switch n.attr.Literal {
-			// case "eng":
-			// case "raw":
-			// case "pos":
-			// case "id":
-			// }
-		default:
-			return "", fmt.Errorf("line: unexpected node type %T", n)
-		}
-	}
-	b.WriteRune(newline)
-	return b.String(), nil
+	return fmt.Errorf("not yet implemented")
 }
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {
