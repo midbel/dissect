@@ -3,7 +3,7 @@ import (
   "src/github.com/midbel/dissect/data/time.lst"
 )
 
-data (
+data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
   size  : uint 32 little
 
   dass  : uint 8, DaSS
@@ -44,10 +44,9 @@ data (
     )
   )
 
-#  print file (
-#    "eng: " coarse.eng
-#    "raw: " coarse.raw
-#    "pos: " coarse.pos
-#    coarse, code, dass.eng, state.eng, param.eng
-#  )
+  print (
+    "eng: " coarse.eng
+    "raw: " coarse.raw
+    "pos: " coarse.pos
+  )
 )

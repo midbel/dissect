@@ -1,10 +1,12 @@
 package dissect
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -20,12 +22,11 @@ const numbit = 8
 
 type Decoder struct {
 	root Block
-	data Block
+	data Data
 }
 
 func NewDecoder(r io.Reader) (*Decoder, error) {
 	n, err := Parse(r)
-	// n, err := Merge(r)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +49,11 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 	s := state{
 		Block: d.root,
 		Size:  len(buf),
+		files: make(map[string]*os.File),
 	}
+	defer s.Close()
 	s.buffer = append(s.buffer, buf...)
-	err := s.decodeBlock(d.data)
+	err := s.decodeBlock(d.data.Block)
 
 	var exit *ExitError
 	if err != nil && errors.As(err, &exit) {
@@ -67,10 +70,21 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 type state struct {
 	Block
 	Values []Value
+	files  map[string]*os.File
 
 	buffer []byte
 	Pos    int
 	Size   int
+}
+
+func (s *state) Close() error {
+	var err error
+	for _, f := range s.files {
+		if e := f.Close(); e != nil {
+			err = e
+		}
+	}
+	return err
 }
 
 func (s *state) ResolveValue(n string) (Value, error) {
@@ -102,6 +116,7 @@ func (root *state) decodeBlock(data Block) error {
 		case Continue:
 			return root.decodeContinue(n)
 		case Print:
+			return root.decodePrint(n)
 		case ExitStmt:
 			return root.decodeExit(n)
 		case LetStmt:
@@ -168,6 +183,61 @@ func (root *state) decodeBlock(data Block) error {
 		}
 	}
 	return nil
+}
+
+func (root *state) decodePrint(p Print) error {
+	var (
+		b bytes.Buffer
+		w io.Writer
+	)
+	if n := p.file.Literal; n == "" || n == "-" {
+		w = os.Stdout
+	} else {
+		if _, ok := root.files[n]; !ok {
+			f, err := os.Create(n)
+			if err != nil {
+				return err
+			}
+			root.files[n] = f
+		}
+		w = root.files[n]
+	}
+	for _, i := range p.lines {
+		str, err := root.decodeLine(i)
+		if err != nil {
+			return err
+		}
+		if str != "" {
+			b.WriteString(str)
+		}
+	}
+	_, err := io.Copy(w, &b)
+	return err
+}
+
+func (root *state) decodeLine(i Line) (string, error) {
+	var b bytes.Buffer
+	for _, n := range i.nodes {
+		switch n := n.(type) {
+		case Token:
+			b.WriteString(n.Literal)
+		case Attr:
+			_, err := root.ResolveValue(n.ref.id.Literal)
+			if err != nil {
+				return "", err
+			}
+			// switch n.attr.Literal {
+			// case "eng":
+			// case "raw":
+			// case "pos":
+			// case "id":
+			// }
+		default:
+			return "", fmt.Errorf("line: unexpected node type %T", n)
+		}
+	}
+	b.WriteRune(newline)
+	return b.String(), nil
 }
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {

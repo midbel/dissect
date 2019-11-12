@@ -2,7 +2,6 @@ package dissect
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -196,8 +195,26 @@ func (t Ternary) exprNode() Node {
 	return t
 }
 
+type Line struct {
+	pos   Position
+	nodes []Node
+}
+
+func (i Line) Pos() Position {
+	return i.pos
+}
+
+func (i Line) String() string {
+	var b strings.Builder
+	for _, n := range i.nodes {
+		b.WriteString(n.String())
+	}
+	return b.String()
+}
+
 type Print struct {
-	file Token
+	file  Token
+	lines []Line
 }
 
 func (p Print) Pos() Position {
@@ -292,6 +309,19 @@ func (t LetStmt) Pos() Position {
 	return t.id.Pos()
 }
 
+type Attr struct {
+	ref  Reference
+	attr Token
+}
+
+func (a Attr) Pos() Position {
+	return a.ref.Pos()
+}
+
+func (a Attr) String() string {
+	return fmt.Sprintf("%s.%s", a.ref, a.attr.Literal)
+}
+
 type Parameter struct {
 	id     Token
 	size   Token
@@ -306,17 +336,6 @@ func (p Parameter) String() string {
 
 func (p Parameter) Pos() Position {
 	return p.id.pos
-}
-
-func (p Parameter) numbit() int {
-	var size int
-	if z, err := strconv.Atoi(p.size.Literal); err == nil {
-		size = z
-	}
-	if size == 0 {
-		size++
-	}
-	return size
 }
 
 func (p Parameter) is() Kind {
@@ -429,6 +448,11 @@ func (p Pair) Pos() Position {
 	return p.id.Pos()
 }
 
+type Data struct {
+	Block
+	files []Token
+}
+
 type Block struct {
 	id    Token
 	nodes []Node
@@ -458,15 +482,21 @@ func (b Block) isData() bool {
 	return b.id.Type == Keyword && b.id.Literal == kwData
 }
 
-func (b Block) ResolveData() (Block, error) {
-	dat, err := b.ResolveBlock(kwData)
-	if err != nil {
-		return dat, err
+func (b Block) ResolveData() (Data, error) {
+	for _, n := range b.nodes {
+		if dat, ok := n.(Data); ok {
+			return dat, nil
+		}
 	}
-	if !dat.isData() {
-		err = fmt.Errorf("data block not found")
-	}
-	return dat, err
+	return Data{}, fmt.Errorf("data block not found")
+	// dat, err := b.ResolveBlock(kwData)
+	// if err != nil {
+	// 	return dat, err
+	// }
+	// if !dat.isData() {
+	// 	err = fmt.Errorf("data block not found")
+	// }
+	// return dat, err
 }
 
 func (b Block) ResolveBlock(block string) (Block, error) {

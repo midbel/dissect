@@ -247,7 +247,7 @@ func (t Token) String() string {
 		return ">"
 	case GreatEq:
 		return ">="
-	case Ident, Float, Integer, Bool, Keyword:
+	case Ident, Text, Float, Integer, Bool, Keyword:
 		return t.Literal
 	default:
 		return string(t.Type)
