@@ -74,14 +74,16 @@ func Parse(r io.Reader) (Node, error) {
 		kwDefine:  p.parseDefine,
 	}
 	p.stmts = map[string]func() (Node, error){
-		kwInclude: p.parseInclude,
-		kwLet:     p.parseLet,
-		kwDel:     p.parseDel,
-		kwSeek:    p.parseSeek,
-		kwRepeat:  p.parseRepeat,
-		kwExit:    p.parseExit,
-		kwMatch:   p.parseMatch,
-		kwBreak:   p.parseBreak,
+		kwInclude:  p.parseInclude,
+		kwLet:      p.parseLet,
+		kwDel:      p.parseDel,
+		kwSeek:     p.parseSeek,
+		kwRepeat:   p.parseRepeat,
+		kwExit:     p.parseExit,
+		kwMatch:    p.parseMatch,
+		kwBreak:    p.parseBreak,
+		kwContinue: p.parseContinue,
+		kwPrint:    p.parsePrint,
 	}
 	if err := p.pushFrame(r); err != nil {
 		return nil, err
@@ -143,7 +145,47 @@ func (p *Parser) Parse() (Node, error) {
 
 func (p *Parser) parsePrint() (Node, error) {
 	p.nextToken()
-	return nil, nil
+	var f Print
+	if p.curr.isIdent() {
+		f.file = p.curr
+		p.nextToken()
+	}
+	if p.curr.Type != lparen {
+		return nil, fmt.Errorf("print: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	for !p.isDone() {
+		if p.curr.Type == rparen {
+			break
+		}
+		p.nextToken()
+	}
+	p.nextToken()
+	return f, nil
+}
+
+func (p *Parser) parseContinue() (Node, error) {
+	if !p.inBlock(kwRepeat) {
+		return nil, fmt.Errorf("continue: unexpected outside of repeat block (%s)", p.curr.Pos())
+	}
+	c := Continue{
+		pos: p.curr.Pos(),
+	}
+	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil, fmt.Errorf("break: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	c.expr = expr
+	// p.nextToken()
+	if p.curr.Type != Newline {
+		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	return c, nil
 }
 
 func (p *Parser) parseBreak() (Node, error) {
@@ -154,6 +196,15 @@ func (p *Parser) parseBreak() (Node, error) {
 		pos: p.curr.Pos(),
 	}
 	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil, fmt.Errorf("break: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	b.expr = expr
+	// p.nextToken()
 	if p.curr.Type != Newline {
 		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
@@ -867,7 +918,7 @@ func (p *Parser) skipToken(typ rune) {
 }
 
 func (p *Parser) inBlock(id string) bool {
-	for i := len(p.blocks)-1; i >= 0; i-- {
+	for i := len(p.blocks) - 1; i >= 0; i-- {
 		if p.blocks[i] == id {
 			return true
 		}

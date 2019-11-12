@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	ErrSkip = errors.New("skip block")
-	ErrDone = errors.New("done")
+	ErrSkip     = errors.New("skip block")
+	ErrDone     = errors.New("done")
+	errBreak    = errors.New("break")
+	errContinue = errors.New("continue")
 )
 
 const numbit = 8
@@ -95,6 +97,11 @@ func (s *state) DeleteValue(n string) {
 func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
+		case Break:
+			return root.decodeBreak(n)
+		case Continue:
+			return root.decodeContinue(n)
+		case Print:
 		case ExitStmt:
 			return root.decodeExit(n)
 		case LetStmt:
@@ -349,6 +356,28 @@ func (root *state) decodeMatch(n Match) error {
 	return err
 }
 
+func (root *state) decodeContinue(n Continue) error {
+	v, err := eval(n.expr, root)
+	if err != nil {
+		return err
+	}
+	if isTrue(v) {
+		err = errContinue
+	}
+	return err
+}
+
+func (root *state) decodeBreak(n Break) error {
+	v, err := eval(n.expr, root)
+	if err != nil {
+		return err
+	}
+	if isTrue(v) {
+		err = errBreak
+	}
+	return err
+}
+
 func (root *state) decodeRepeat(n Repeat) error {
 	var (
 		dat    Block
@@ -389,7 +418,13 @@ func (root *state) decodeRepeat(n Repeat) error {
 		return err
 	}
 	for i := uint64(0); i < repeat; i++ {
-		if err := root.decodeBlock(dat); err != nil {
+		if err = root.decodeBlock(dat); err != nil {
+			if errors.Is(err, errContinue) {
+				continue
+			}
+			if errors.Is(err, errBreak) {
+				err = nil
+			}
 			break
 		}
 	}

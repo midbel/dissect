@@ -3,7 +3,7 @@ import (
   "src/github.com/midbel/dissect/data/time.lst"
 )
 
-data(
+data (
   size  : uint 32 little
 
   dass  : uint 8, DaSS
@@ -43,4 +43,11 @@ data(
       param: int 1
     )
   )
+
+#  print file (
+#    "eng: " coarse.eng
+#    "raw: " coarse.raw
+#    "pos: " coarse.pos
+#    coarse, code, dass.eng, state.eng, param.eng
+#  )
 )

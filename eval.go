@@ -6,6 +6,9 @@ import (
 )
 
 func eval(e Expression, root *state) (Value, error) {
+	if e == nil {
+		return &Null{}, nil
+	}
 	var (
 		v   Value
 		err error

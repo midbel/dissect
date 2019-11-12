@@ -107,35 +107,37 @@ const (
 )
 
 const (
-	kwEnum    = "enum"
-	kwPoly    = "polynomial"
-	kwPoint   = "pointpair"
-	kwBlock   = "block"
-	kwImport  = "import"
-	kwInclude = "include"
-	kwRepeat  = "repeat"
-	kwData    = "data"
-	kwDeclare = "declare"
-	kwDefine  = "define"
-	kwBreak   = "break"
-	kwInline  = "inline"
-	kwLet     = "let"
-	kwDel     = "del"
-	kwSeek    = "seek"
-	kwTrue    = "true"
-	kwFalse   = "false"
-	kwAno     = "anonymous"
-	kwExit    = "exit"
-	kwInt     = "int"
-	kwUint    = "uint"
-	kwFloat   = "float"
-	kwString  = "string"
-	kwBytes   = "bytes"
-	kwMatch   = "match"
-	kwWith    = "with"
-	kwAs      = "as"
-	kwBig     = "big"
-	kwLittle  = "little"
+	kwEnum     = "enum"
+	kwPoly     = "polynomial"
+	kwPoint    = "pointpair"
+	kwBlock    = "block"
+	kwImport   = "import"
+	kwInclude  = "include"
+	kwRepeat   = "repeat"
+	kwData     = "data"
+	kwDeclare  = "declare"
+	kwDefine   = "define"
+	kwBreak    = "break"
+	kwContinue = "continue"
+	kwPrint    = "print"
+	kwInline   = "inline"
+	kwLet      = "let"
+	kwDel      = "del"
+	kwSeek     = "seek"
+	kwTrue     = "true"
+	kwFalse    = "false"
+	kwAno      = "anonymous"
+	kwExit     = "exit"
+	kwInt      = "int"
+	kwUint     = "uint"
+	kwFloat    = "float"
+	kwString   = "string"
+	kwBytes    = "bytes"
+	kwMatch    = "match"
+	kwWith     = "with"
+	kwAs       = "as"
+	kwBig      = "big"
+	kwLittle   = "little"
 )
 
 var keywords = []string{
@@ -148,7 +150,9 @@ var keywords = []string{
 	kwData,
 	kwDeclare,
 	kwDefine,
+	kwPrint,
 	kwBreak,
+	kwContinue,
 	kwLet,
 	kwDel,
 	kwSeek,

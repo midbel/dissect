@@ -22,6 +22,9 @@ func DumpReader(r io.Reader) error {
 func dumpNode(n Node, level int) error {
 	indent := strings.Repeat(" ", level*2)
 	switch n := n.(type) {
+	case Print:
+		fmt.Printf("%sprint(pos=%s) (\n", indent, n.Pos())
+		fmt.Printf("%s)", indent)
 	case Block:
 		fmt.Printf("%sblock(name=%s, type=%s, pos=%s) (\n", indent, n.String(), n.blockName(), n.Pos())
 		for _, n := range n.nodes {
@@ -60,6 +63,18 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%srepeat(repeat=%s, pos=%s) (\n", indent, n.repeat.Literal, n.Pos())
 		dumpNode(n.node, level+1)
 		fmt.Printf("%s)", indent)
+	case Break:
+		predicate := kwTrue
+		if n.expr != nil {
+			predicate = n.expr.String()
+		}
+		fmt.Printf("%sbreak(predicate=%s, pos=%s)", indent, predicate, n.Pos())
+	case Continue:
+		predicate := kwTrue
+		if n.expr != nil {
+			predicate = n.expr.String()
+		}
+		fmt.Printf("%scontinue(predicate=%s, pos=%s)", indent, predicate, n.Pos())
 	case Include:
 		predicate := kwTrue
 		if n.Predicate != nil {

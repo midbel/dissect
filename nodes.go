@@ -208,8 +208,25 @@ func (p Print) String() string {
 	return p.file.Literal
 }
 
+type Continue struct {
+	pos  Position
+	expr Expression
+}
+
+func (c Continue) Pos() Position {
+	return c.pos
+}
+
+func (c Continue) String() string {
+	if c.expr == nil {
+		return "continue"
+	}
+	return fmt.Sprintf("continue(%s)", c.expr)
+}
+
 type Break struct {
-	pos Position
+	pos  Position
+	expr Expression
 }
 
 func (b Break) Pos() Position {
@@ -217,7 +234,10 @@ func (b Break) Pos() Position {
 }
 
 func (b Break) String() string {
-	return "break"
+	if b.expr == nil {
+		return "break"
+	}
+	return fmt.Sprintf("break(%s)", b.expr)
 }
 
 type ExitStmt struct {
