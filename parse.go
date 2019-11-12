@@ -81,6 +81,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwRepeat:  p.parseRepeat,
 		kwExit:    p.parseExit,
 		kwMatch:   p.parseMatch,
+		kwBreak:   p.parseBreak,
 	}
 	if err := p.pushFrame(r); err != nil {
 		return nil, err
@@ -146,7 +147,7 @@ func (p *Parser) parsePrint() (Node, error) {
 }
 
 func (p *Parser) parseBreak() (Node, error) {
-	if id := p.currentBlock(); id != kwRepeat {
+	if !p.inBlock(kwRepeat) {
 		return nil, fmt.Errorf("break: unexpected outside of repeat block (%s)", p.curr.Pos())
 	}
 	b := Break{
@@ -156,6 +157,7 @@ func (p *Parser) parseBreak() (Node, error) {
 	if p.curr.Type != Newline {
 		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
+	p.nextToken()
 	return b, nil
 }
 
@@ -613,7 +615,7 @@ func (p *Parser) parseField() (node Node, err error) {
 	case colon:
 		node, err = p.parseFieldShort(id)
 	case Keyword:
-		if id := p.currentBlock(); id != kwData {
+		if !p.inBlock(kwData) {
 			err = fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 			break
 		}
@@ -862,6 +864,15 @@ func (p *Parser) skipToken(typ rune) {
 	for p.curr.Type == typ {
 		p.nextToken()
 	}
+}
+
+func (p *Parser) inBlock(id string) bool {
+	for i := len(p.blocks)-1; i >= 0; i-- {
+		if p.blocks[i] == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Parser) currentBlock() string {

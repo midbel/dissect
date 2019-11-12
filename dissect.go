@@ -117,6 +117,7 @@ const (
 	kwData    = "data"
 	kwDeclare = "declare"
 	kwDefine  = "define"
+	kwBreak   = "break"
 	kwInline  = "inline"
 	kwLet     = "let"
 	kwDel     = "del"
@@ -147,6 +148,7 @@ var keywords = []string{
 	kwData,
 	kwDeclare,
 	kwDefine,
+	kwBreak,
 	kwLet,
 	kwDel,
 	kwSeek,
