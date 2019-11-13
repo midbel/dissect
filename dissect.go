@@ -98,6 +98,13 @@ func (k Kind) String() string {
 }
 
 const (
+	methRaw   = "raw"
+	methEng   = "eng"
+	methBoth  = "both"
+	methDebug = "debug"
+)
+
+const (
 	kindNull Kind = iota
 	kindInt
 	kindUint
@@ -136,6 +143,7 @@ const (
 	kwMatch    = "match"
 	kwWith     = "with"
 	kwAs       = "as"
+	kwTo       = "to"
 	kwBig      = "big"
 	kwLittle   = "little"
 )
@@ -166,6 +174,7 @@ var keywords = []string{
 	kwMatch,
 	kwWith,
 	kwAs,
+	kwTo,
 	kwBig,
 	kwLittle,
 }

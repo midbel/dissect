@@ -1,7 +1,7 @@
 package dissect
 
 import (
-	"bytes"
+	// "bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -186,7 +186,40 @@ func (root *state) decodeBlock(data Block) error {
 }
 
 func (root *state) decodePrint(p Print) error {
-	return fmt.Errorf("not yet implemented")
+	var w io.Writer
+	if f, ok := root.files[p.file.Literal]; ok {
+		w = f
+	} else {
+		if file := p.file.Literal; file == "" || file == "-" {
+			w = os.Stdout
+		} else {
+			f, err := os.Create(p.file.Literal)
+			if err != nil {
+				return err
+			}
+			root.files[file], w = f, f
+		}
+	}
+	var (
+		err   error
+		print func(io.Writer, *state, []Token) error
+	)
+	switch p.method.Literal {
+	case methRaw:
+		print = printRaw
+	case methEng:
+		print = printEng
+	case methBoth:
+		print = printBoth
+	case methDebug:
+		print = printDebug
+	default:
+		err = fmt.Errorf("print: unsupported method %s", p.method.Literal)
+	}
+	if err != nil {
+		return err
+	}
+	return print(w, root, p.values)
 }
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {

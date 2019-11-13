@@ -131,7 +131,79 @@ func (p *Parser) Parse() (Node, error) {
 }
 
 func (p *Parser) parsePrint() (Node, error) {
-	return nil, fmt.Printf("print: not yet implemented")
+	if !p.inBlock(kwData) {
+		return nil, fmt.Errorf("print: unexpected outside of data bock (%s)", p.curr.Pos())
+	}
+	f := Print{
+		pos:    p.curr.Pos(),
+		file:   Token{Literal: "-"},
+		format: Token{Literal: "csv"},
+		method: Token{Literal: methDebug},
+	}
+	p.nextToken()
+	if p.curr.isIdent() {
+		switch p.curr.Literal {
+		case methBoth, methRaw, methEng, methDebug:
+		default:
+			return nil, fmt.Errorf("print: unexpected method %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		f.method = p.curr
+		p.nextToken()
+	}
+	if p.curr.Type == Newline {
+		return f, nil
+	}
+	var (
+		prev string
+		done bool
+	)
+	for !done {
+		if p.curr.Type != Keyword {
+			return nil, fmt.Errorf("print: expected keyword, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		kwd := p.curr.Literal
+		switch kwd {
+		case kwTo:
+			if prev != "" {
+				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
+			}
+			p.nextToken()
+			if !p.curr.isIdent() {
+				return nil, fmt.Errorf("print: expected ident/text, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			f.file = p.curr
+		case kwAs:
+			if !(prev == "" || prev == kwTo) {
+				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
+			}
+			p.nextToken()
+			if p.curr.Type != Ident {
+				return nil, fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			f.format = p.curr
+		case kwWith:
+			if !(prev == "" || prev == kwTo || prev == kwAs) {
+				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
+			}
+			p.nextToken()
+			for p.curr.Type != Newline {
+				if p.curr.Type != Ident {
+					return nil, fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+				}
+				f.values = append(f.values, p.curr)
+				p.nextToken()
+			}
+			done = true
+		default:
+			return nil, fmt.Errorf("print, unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		prev = kwd
+		p.nextToken()
+		if p.curr.Type == Newline {
+			break
+		}
+	}
+	return f, nil
 }
 
 func (p *Parser) parseContinue() (Node, error) {

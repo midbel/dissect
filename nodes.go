@@ -196,14 +196,15 @@ func (t Ternary) exprNode() Node {
 }
 
 type Print struct {
+	pos    Position
 	file   Token
-	format Token
+	method Token // eng, raw, both, debug (default)
+	format Token // csv,...
 	values []Token
-	fields []Token
 }
 
 func (p Print) Pos() Position {
-	return p.file.Pos()
+	return p.pos
 }
 
 func (p Print) String() string {

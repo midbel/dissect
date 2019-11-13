@@ -22,7 +22,17 @@ func DumpReader(r io.Reader) error {
 func dumpNode(n Node, level int) error {
 	indent := strings.Repeat(" ", level*2)
 	switch n := n.(type) {
+	case Token:
+		fmt.Printf("%stoken(literal=%s, pos=%s)", indent, n.Literal, n.Pos())
 	case Print:
+		fmt.Printf("%sprint(file=%s, format=%s, method=%s, pos=%s)", indent, n.file, n.format, n.method, n.Pos())
+		if len(n.values) > 0 {
+			fmt.Println(" (")
+			for _, n := range n.values {
+				dumpNode(n, level+1)
+			}
+			fmt.Printf("%s)", indent)
+		}
 	case Data:
 		fs := make([]string, len(n.files))
 		for i := 0; i < len(n.files); i++ {

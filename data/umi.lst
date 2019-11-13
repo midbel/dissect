@@ -17,7 +17,7 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
   include time5
 
   length: uint 16
-  let bitlen = length * 8
+  #let bitlen = length * 8
 
   match type with (
     1 = (
@@ -44,10 +44,6 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
     )
   )
 
-  print <file> <format:csv, rec, xml, json> <values...> (
-    id
-    pos
-    eng
-    raw
-  )
+  #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
+  print to "umi.csv"
 )

@@ -2,8 +2,10 @@ package dissect
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +16,7 @@ var (
 
 type Value interface {
 	fmt.Stringer
+	Offset() int
 	Cmp(v Value) int
 	Set(v Value)
 
@@ -35,6 +38,10 @@ type Meta struct {
 
 func (m *Meta) Set(v Value) {
 	m.Eng = v
+}
+
+func (m *Meta) Offset() int {
+	return m.Pos
 }
 
 func (m *Meta) String() string {
@@ -333,6 +340,49 @@ func (s *String) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
 func (s *String) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) reverse() (Value, error)         { return nil, ErrUnsupported }
+
+func appendRaw(buf []byte, v Value) []byte {
+	switch v := v.(type) {
+	case *Int:
+		buf = strconv.AppendInt(buf, v.Raw, 10)
+	case *Uint:
+		buf = strconv.AppendUint(buf, v.Raw, 10)
+	case *Real:
+		buf = strconv.AppendFloat(buf, v.Raw, 'f', -1, 64)
+	case *Boolean:
+		buf = strconv.AppendBool(buf, v.Raw)
+	case *String:
+		buf = append(buf, []byte(v.Raw)...)
+	case *Bytes:
+		x := hex.EncodeToString(v.Raw)
+		buf = append(buf, []byte(x)...)
+	default:
+	}
+	return buf
+}
+
+func appendEng(buf []byte, v Value) []byte {
+	var eng Value
+	switch v := v.(type) {
+	case *Int:
+		eng = v.Eng
+	case *Uint:
+		eng = v.Eng
+	case *Real:
+		eng = v.Eng
+	case *Boolean:
+		eng = v.Eng
+	case *String:
+		eng = v.Eng
+	case *Bytes:
+		eng = v.Eng
+	default:
+	}
+	if eng == nil {
+		eng = v
+	}
+	return appendRaw(buf, eng)
+}
 
 func asReal(v Value) float64 {
 	switch v := v.(type) {
