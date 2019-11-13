@@ -105,6 +105,12 @@ const (
 )
 
 const (
+	fmtCSV   = "csv"
+	fmtTuple = "tuple"
+	fmtSexp  = "sexp"
+)
+
+const (
 	kindNull Kind = iota
 	kindInt
 	kindUint

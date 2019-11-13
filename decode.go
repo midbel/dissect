@@ -51,6 +51,14 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 		Size:  len(buf),
 		files: make(map[string]*os.File),
 	}
+	s.printers = map[struct{Format, Method string}]printFunc{
+		{Format: fmtCSV, Method: methRaw}: csvPrintRaw,
+		{Format: fmtCSV, Method: methEng}: csvPrintEng,
+		{Format: fmtCSV, Method: methBoth}: csvPrintBoth,
+		{Format: fmtCSV, Method: methDebug}: csvPrintDebug,
+		{Format: fmtTuple, Method: methDebug}: sexpPrintDebug,
+		{Format: fmtSexp, Method: methDebug}: sexpPrintDebug,
+	}
 	defer s.Close()
 	s.buffer = append(s.buffer, buf...)
 	err := s.decodeBlock(d.data.Block)
@@ -75,6 +83,8 @@ type state struct {
 	buffer []byte
 	Pos    int
 	Size   int
+
+	printers map[struct{Format, Method string}]printFunc
 }
 
 func (s *state) Close() error {
@@ -200,26 +210,18 @@ func (root *state) decodePrint(p Print) error {
 			root.files[file], w = f, f
 		}
 	}
-	var (
-		err   error
-		print func(io.Writer, *state, []Token) error
-	)
-	switch p.method.Literal {
-	case methRaw:
-		print = printRaw
-	case methEng:
-		print = printEng
-	case methBoth:
-		print = printBoth
-	case methDebug:
-		print = printDebug
-	default:
-		err = fmt.Errorf("print: unsupported method %s", p.method.Literal)
+	k := struct{
+		Format string
+		Method string
+	} {
+		Format: p.format.Literal,
+		Method: p.method.Literal,
 	}
-	if err != nil {
-		return err
+	print, ok := root.printers[k]
+	if !ok {
+		return fmt.Errorf("print: unsupported method %s for format %s", p.method, p.format)
 	}
-	return print(w, root, p.values)
+	return print(w, resolveValues(root, p.values))
 }
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {

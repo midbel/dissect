@@ -7,12 +7,45 @@ import (
 	"strconv"
 )
 
-func printDebug(w io.Writer, root *state, vs []Token) error {
+type printFunc func(io.Writer, []Value) error
+
+func sexpPrintDebug(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
 	)
-	for _, v := range resolveValues(root, vs) {
+	for _, v := range values {
+		buf.WriteRune(lparen)
+
+		var (
+			offset = v.Offset()
+			index  = offset / 8
+		)
+
+		buf.WriteString(strconv.Itoa(index))
+		buf.WriteRune(colon)
+		buf.WriteString(strconv.Itoa(offset))
+		buf.WriteRune(colon)
+		buf.WriteString(v.String())
+		buf.WriteRune(colon)
+		buf.Write(appendRaw(dat, v))
+		buf.WriteRune(colon)
+		buf.Write(appendEng(dat, v))
+
+		buf.WriteRune(rparen)
+		if _, err := io.Copy(w, &buf); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func csvPrintDebug(w io.Writer, values []Value) error {
+	var (
+		buf bytes.Buffer
+		dat = make([]byte, 0, 32)
+	)
+	for _, v := range values {
 		var (
 			offset = v.Offset()
 			index  = offset / 8
@@ -36,12 +69,12 @@ func printDebug(w io.Writer, root *state, vs []Token) error {
 	return nil
 }
 
-func printRaw(w io.Writer, root *state, vs []Token) error {
+func csvPrintRaw(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
 		dat []byte
 	)
-	for i, v := range resolveValues(root, vs) {
+	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
@@ -52,12 +85,12 @@ func printRaw(w io.Writer, root *state, vs []Token) error {
 	return err
 }
 
-func printEng(w io.Writer, root *state, vs []Token) error {
+func csvPrintEng(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
 		dat []byte
 	)
-	for i, v := range resolveValues(root, vs) {
+	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
@@ -68,12 +101,12 @@ func printEng(w io.Writer, root *state, vs []Token) error {
 	return err
 }
 
-func printBoth(w io.Writer, root *state, vs []Token) error {
+func csvPrintBoth(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
 		dat []byte
 	)
-	for i, v := range resolveValues(root, vs) {
+	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
