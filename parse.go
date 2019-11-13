@@ -136,9 +136,9 @@ func (p *Parser) parsePrint() (Node, error) {
 	}
 	f := Print{
 		pos:    p.curr.Pos(),
-		file:   Token{Literal: "-"},
-		format: Token{Literal: "csv"},
-		method: Token{Literal: methDebug},
+		file:   Token{Literal: "-", Type: Ident},
+		format: Token{Literal: "csv", Type: Ident},
+		method: Token{Literal: methDebug, Type: Ident},
 	}
 	p.nextToken()
 	if p.curr.isIdent() {
@@ -153,57 +153,89 @@ func (p *Parser) parsePrint() (Node, error) {
 	if p.curr.Type == Newline {
 		return f, nil
 	}
-	var (
-		prev string
-		done bool
-	)
-	for !done {
-		if p.curr.Type != Keyword {
-			return nil, fmt.Errorf("print: expected keyword, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	var err error
+	switch p.curr.Type {
+	case Keyword:
+		if kw := p.curr.Literal; kw == kwTo {
+			err = p.parsePrintTo(&f)
+		} else if kw == kwAs {
+			err = p.parsePrintAs(&f)
+		} else if kw == kwWith {
+			err = p.parsePrintWith(&f)
+		} else {
+			err = fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		kwd := p.curr.Literal
-		switch kwd {
-		case kwTo:
-			if prev != "" {
-				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
-			}
-			p.nextToken()
-			if !p.curr.isIdent() {
-				return nil, fmt.Errorf("print: expected ident/text, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-			}
-			f.file = p.curr
-		case kwAs:
-			if !(prev == "" || prev == kwTo) {
-				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
-			}
-			p.nextToken()
-			if p.curr.Type != Ident {
-				return nil, fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-			}
-			f.format = p.curr
-		case kwWith:
-			if !(prev == "" || prev == kwTo || prev == kwAs) {
-				return nil, fmt.Errorf("print: unexpected keyword %s (%s)", kwd, p.curr.Pos())
-			}
-			p.nextToken()
-			for p.curr.Type != Newline {
-				if p.curr.Type != Ident {
-					return nil, fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-				}
-				f.values = append(f.values, p.curr)
-				p.nextToken()
-			}
-			done = true
-		default:
-			return nil, fmt.Errorf("print, unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		prev = kwd
-		p.nextToken()
-		if p.curr.Type == Newline {
-			break
-		}
+	case Newline:
+	default:
+		err = fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	return f, nil
+	return f, err
+}
+
+func (p *Parser) parsePrintTo(f *Print) error {
+	if p.curr.Literal != kwTo {
+		return fmt.Errorf("print: expected to, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return fmt.Errorf("print: expected ident/text, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	f.file = p.curr
+	p.nextToken()
+	switch p.curr.Type {
+	case Keyword:
+		if kw := p.curr.Literal; kw == kwAs {
+			return p.parsePrintAs(f)
+		} else if kw == kwWith {
+			return p.parsePrintWith(f)
+		} else {
+			return fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+	case Newline:
+	default:
+		return fmt.Errorf("print: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	return nil
+}
+
+func (p *Parser) parsePrintAs(f *Print) error {
+	if p.curr.Literal != kwAs {
+		return fmt.Errorf("print: expected as, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	if p.curr.Type != Ident {
+		return fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	switch p.curr.Literal {
+	case fmtCSV, fmtTuple, fmtSexp:
+		f.format = p.curr
+	default:
+		return fmt.Errorf("print: unknown format %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	switch p.curr.Type {
+	case Keyword:
+		return p.parsePrintWith(f)
+	case Newline:
+	default:
+		return fmt.Errorf("print: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	return nil
+}
+
+func (p *Parser) parsePrintWith(f *Print) error {
+	if p.curr.Literal != kwWith {
+		return fmt.Errorf("print: expected with, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	for p.curr.Type != Newline {
+		if p.curr.Type != Ident {
+			return fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		f.values = append(f.values, p.curr)
+		p.nextToken()
+	}
+	return nil
 }
 
 func (p *Parser) parseContinue() (Node, error) {

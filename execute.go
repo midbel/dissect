@@ -1,9 +1,9 @@
 package dissect
 
 import (
-  "io"
+	"io"
 )
 
 func Execute(script io.Reader, files []string) error {
-  return nil
+	return nil
 }

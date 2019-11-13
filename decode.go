@@ -51,13 +51,13 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 		Size:  len(buf),
 		files: make(map[string]*os.File),
 	}
-	s.printers = map[struct{Format, Method string}]printFunc{
-		{Format: fmtCSV, Method: methRaw}: csvPrintRaw,
-		{Format: fmtCSV, Method: methEng}: csvPrintEng,
-		{Format: fmtCSV, Method: methBoth}: csvPrintBoth,
-		{Format: fmtCSV, Method: methDebug}: csvPrintDebug,
+	s.printers = map[struct{ Format, Method string }]printFunc{
+		{Format: fmtCSV, Method: methRaw}:     csvPrintRaw,
+		{Format: fmtCSV, Method: methEng}:     csvPrintEng,
+		{Format: fmtCSV, Method: methBoth}:    csvPrintBoth,
+		{Format: fmtCSV, Method: methDebug}:   csvPrintDebug,
 		{Format: fmtTuple, Method: methDebug}: sexpPrintDebug,
-		{Format: fmtSexp, Method: methDebug}: sexpPrintDebug,
+		{Format: fmtSexp, Method: methDebug}:  sexpPrintDebug,
 	}
 	defer s.Close()
 	s.buffer = append(s.buffer, buf...)
@@ -84,7 +84,7 @@ type state struct {
 	Pos    int
 	Size   int
 
-	printers map[struct{Format, Method string}]printFunc
+	printers map[struct{ Format, Method string }]printFunc
 }
 
 func (s *state) Close() error {
@@ -210,10 +210,10 @@ func (root *state) decodePrint(p Print) error {
 			root.files[file], w = f, f
 		}
 	}
-	k := struct{
+	k := struct {
 		Format string
 		Method string
-	} {
+	}{
 		Format: p.format.Literal,
 		Method: p.method.Literal,
 	}
