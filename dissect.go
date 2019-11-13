@@ -149,6 +149,7 @@ const (
 	kwMatch    = "match"
 	kwWith     = "with"
 	kwAs       = "as"
+	kwAt       = "at"
 	kwTo       = "to"
 	kwBig      = "big"
 	kwLittle   = "little"
@@ -180,6 +181,7 @@ var keywords = []string{
 	kwMatch,
 	kwWith,
 	kwAs,
+	kwAt,
 	kwTo,
 	kwBig,
 	kwLittle,

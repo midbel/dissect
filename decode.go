@@ -150,7 +150,11 @@ func (root *state) decodeBlock(data Block) error {
 			if err != nil {
 				return fmt.Errorf("invalid seek value given")
 			}
-			root.Pos += seek
+			if n.absolute {
+				root.Pos = seek
+			} else {
+				root.Pos += seek
+			}
 			if root.Pos < 0 || root.Pos >= (root.Size*numbit) {
 				return fmt.Errorf("seek outside of buffer range")
 			}

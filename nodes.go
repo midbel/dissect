@@ -257,8 +257,9 @@ func (e ExitStmt) Pos() Position {
 }
 
 type SeekStmt struct {
-	pos    Position
-	offset Token
+	pos      Position
+	offset   Token
+	absolute bool
 }
 
 func (s SeekStmt) String() string {

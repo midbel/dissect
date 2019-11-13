@@ -364,6 +364,13 @@ func (p *Parser) parseRepeat() (Node, error) {
 func (p *Parser) parseSeek() (Node, error) {
 	k := SeekStmt{pos: p.curr.Pos()}
 	p.nextToken()
+	if p.curr.Type == Keyword {
+		if p.curr.Literal != kwAt {
+			return nil, fmt.Errorf("seek: expected at, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		k.absolute = true
+		p.nextToken()
+	}
 	if !p.curr.isNumber() {
 		return nil, fmt.Errorf("seek: expected number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
