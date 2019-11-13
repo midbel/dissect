@@ -102,9 +102,8 @@ func (b *Boolean) Cmp(v Value) int {
 	}
 	if b.Raw == false {
 		return -1
-	} else {
-		return 1
 	}
+	return 1
 }
 
 func (b *Boolean) add(v Value) (Value, error)      { return nil, ErrUnsupported }

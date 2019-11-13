@@ -45,5 +45,5 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
   )
 
   #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
-  print to "umi.csv"
+  print
 )

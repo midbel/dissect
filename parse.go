@@ -484,9 +484,8 @@ func (p *Parser) parsePrefix() (Expression, error) {
 		}
 		if p.peek.Type != rparen {
 			return nil, fmt.Errorf("expression: expected ), got %s (%s)", TokenString(p.peek), p.peek.Pos())
-		} else {
-			p.nextToken()
 		}
+		p.nextToken()
 		expr = n
 	case Integer, Float, Bool:
 		expr = Literal{id: p.curr}
@@ -1120,15 +1119,16 @@ func mergeRepeat(r Repeat, root Block) (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if node, err := merge(dat, root); err != nil {
+	node, err := merge(dat, root)
+	if err != nil {
 		return nil, err
-	} else {
-		d, ok := node.(Block)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %s", node)
-		}
-		dat = d
 	}
+	d, ok := node.(Block)
+	if !ok {
+		return nil, fmt.Errorf("unexpected node type %s", node)
+	}
+	dat = d
+
 	tok := Token{
 		Type:    Keyword,
 		Literal: kwInline,
@@ -1188,7 +1188,6 @@ func mergeInclude(i Include, root Block) (Node, error) {
 	}
 	if i.Predicate == nil {
 		return i.node, err
-	} else {
-		return i, err
 	}
+	return i, err
 }

@@ -40,9 +40,8 @@ func evalTernary(t Ternary, root *state) (Value, error) {
 	}
 	if isTrue(v) {
 		return eval(t.csq, root)
-	} else {
-		return eval(t.alt, root)
 	}
+	return eval(t.alt, root)
 }
 
 func evalAssign(a Assignment, root *state) (Value, error) {
