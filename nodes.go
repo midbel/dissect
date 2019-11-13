@@ -314,6 +314,7 @@ type Parameter struct {
 	kind   Token
 	endian Token
 	apply  Node
+	expect Expression
 }
 
 func (p Parameter) String() string {

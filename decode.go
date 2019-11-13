@@ -267,6 +267,15 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	if err != nil {
 		return raw, err
 	}
+	if p.expect != nil {
+		expect, err := eval(p.expect, root)
+		if err != nil {
+			return nil, err
+		}
+		if cmp := raw.Cmp(expect); cmp != 0 {
+			return nil, fmt.Errorf("%s expectation failed: want %s, got %s", p, expect, raw)
+		}
+	}
 	root.Pos += bits
 	return raw, nil
 }

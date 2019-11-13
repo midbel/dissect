@@ -137,7 +137,7 @@ func (p *Parser) parsePrint() (Node, error) {
 	f := Print{
 		pos:    p.curr.Pos(),
 		file:   Token{Literal: "-", Type: Ident},
-		format: Token{Literal: "csv", Type: Ident},
+		format: Token{Literal: fmtCSV, Type: Ident},
 		method: Token{Literal: methDebug, Type: Ident},
 	}
 	p.nextToken()
@@ -771,11 +771,11 @@ func (p *Parser) parseField() (node Node, err error) {
 		}
 		if p.curr.Type == Assign {
 			p.nextToken()
-			switch p.curr.Type {
-			case Ident, Text, Integer, Float, Bool:
-			default:
-				return nil, fmt.Errorf("field: expected value, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			expr, err := p.parsePredicate()
+			if err != nil {
+				return nil, err
 			}
+			n.expect = expr
 		}
 		node = n
 	}
