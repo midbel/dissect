@@ -9,6 +9,15 @@ import (
 
 type printFunc func(io.Writer, []Value) error
 
+ var printers = map[struct{ Format, Method string }]printFunc{
+	{Format: fmtCSV, Method: methRaw}:     csvPrintRaw,
+	{Format: fmtCSV, Method: methEng}:     csvPrintEng,
+	{Format: fmtCSV, Method: methBoth}:    csvPrintBoth,
+	{Format: fmtCSV, Method: methDebug}:   csvPrintDebug,
+	{Format: fmtTuple, Method: methDebug}: sexpPrintDebug,
+	{Format: fmtSexp, Method: methDebug}:  sexpPrintDebug,
+}
+
 func sexpPrintDebug(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer

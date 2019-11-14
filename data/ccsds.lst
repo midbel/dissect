@@ -88,7 +88,7 @@ block private (
 )
 
 data (
-  size: uint 32
+  size: uint 32 little
   type: uint 8, DataType
   include time5
 
@@ -98,4 +98,6 @@ data (
 
   include[second==1] secondary
   include private
+
+  print
 )

@@ -51,14 +51,7 @@ func (d Decoder) Decode(buf []byte) ([]Value, error) {
 		Size:  len(buf),
 		files: make(map[string]*os.File),
 	}
-	s.printers = map[struct{ Format, Method string }]printFunc{
-		{Format: fmtCSV, Method: methRaw}:     csvPrintRaw,
-		{Format: fmtCSV, Method: methEng}:     csvPrintEng,
-		{Format: fmtCSV, Method: methBoth}:    csvPrintBoth,
-		{Format: fmtCSV, Method: methDebug}:   csvPrintDebug,
-		{Format: fmtTuple, Method: methDebug}: sexpPrintDebug,
-		{Format: fmtSexp, Method: methDebug}:  sexpPrintDebug,
-	}
+
 	defer s.Close()
 	s.buffer = append(s.buffer, buf...)
 	err := s.decodeBlock(d.data.Block)
@@ -83,8 +76,6 @@ type state struct {
 	buffer []byte
 	Pos    int
 	Size   int
-
-	printers map[struct{ Format, Method string }]printFunc
 }
 
 func (s *state) Close() error {
@@ -146,17 +137,8 @@ func (root *state) decodeBlock(data Block) error {
 				root.DeleteValue(r.id.Literal)
 			}
 		case SeekStmt:
-			seek, err := strconv.Atoi(n.offset.Literal)
-			if err != nil {
-				return fmt.Errorf("invalid seek value given")
-			}
-			if n.absolute {
-				root.Pos = seek
-			} else {
-				root.Pos += seek
-			}
-			if root.Pos < 0 || root.Pos >= (root.Size*numbit) {
-				return fmt.Errorf("seek outside of buffer range")
+			if err := root.decodeSeek(n); err != nil {
+				return err
 			}
 		case Repeat:
 			// ignore for now
@@ -221,7 +203,7 @@ func (root *state) decodePrint(p Print) error {
 		Format: p.format.Literal,
 		Method: p.method.Literal,
 	}
-	print, ok := root.printers[k]
+	print, ok := printers[k]
 	if !ok {
 		return fmt.Errorf("print: unsupported method %s for format %s", p.method, p.format)
 	}
@@ -443,6 +425,22 @@ func (root *state) decodeBreak(n Break) error {
 		err = errBreak
 	}
 	return err
+}
+
+func (root *state) decodeSeek(n SeekStmt) error {
+	seek, err := strconv.Atoi(n.offset.Literal)
+	if err != nil {
+		return fmt.Errorf("invalid seek value given")
+	}
+	if n.absolute {
+		root.Pos = seek
+	} else {
+		root.Pos += seek
+	}
+	if root.Pos < 0 || root.Pos >= (root.Size*numbit) {
+		return fmt.Errorf("seek outside of buffer range")
+	}
+	return nil
 }
 
 func (root *state) decodeRepeat(n Repeat) error {
