@@ -277,7 +277,7 @@ func (s *Scanner) skipBlank() {
 }
 
 func isIdent(b byte) bool {
-	return isLetter(b) || isDigit(b) || b == minus || b == underscore
+	return isLetter(b) || isDigit(b) || b == underscore
 }
 
 func isLetter(b byte) bool {
