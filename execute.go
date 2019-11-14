@@ -2,15 +2,33 @@ package dissect
 
 import (
 	"bufio"
+	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/midbel/glob"
 )
 
-func Dissect(script io.Reader, fs []string) error {
+func Dissect(script io.Reader, r io.Reader) error {
+	n, err := Parse(script)
+	if err != nil {
+		return err
+	}
+	root := n.(Block)
+	data, err := root.ResolveData()
+	if err != nil {
+		return err
+	}
+	s := state{
+		Block: root,
+		files: make(map[string]*os.File),
+	}
+	defer s.Close()
+	return s.Run(data.Block, r)
+}
+
+func DissectFiles(script io.Reader, fs []string) error {
 	n, err := Parse(script)
 	if err != nil {
 		return err
@@ -35,15 +53,29 @@ func Dissect(script io.Reader, fs []string) error {
 	defer s.Close()
 
 	for f := range walkFiles(files) {
-		buf, err := ioutil.ReadFile(f)
+		r, err := os.Open(f)
 		if err != nil {
 			continue
 		}
-		if err := s.Run(data.Block, buf); err != nil {
+		err = s.Run(data.Block, r)
+		r.Close()
+		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+func checkExit(err error) error {
+	var exit *ExitError
+	if err != nil && errors.As(err, &exit) {
+		if exit.code == 0 {
+			err = nil
+		}
+	}
+	if err != nil && !errors.Is(err, ErrDone) {
+		return err
+	}
 	return nil
 }
 

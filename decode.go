@@ -1,7 +1,7 @@
 package dissect
 
 import (
-	// "bytes"
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -20,63 +20,15 @@ var (
 
 const numbit = 8
 
-type Decoder struct {
-	root Block
-	data Data
-}
-
-func NewDecoder(r io.Reader) (*Decoder, error) {
-	n, err := Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	root, ok := n.(Block)
-	if !ok {
-		return nil, fmt.Errorf("root node is not a block")
-	}
-	data, err := root.ResolveData()
-	if err != nil {
-		return nil, err
-	}
-	d := Decoder{
-		root: root,
-		data: data,
-	}
-	return &d, nil
-}
-
-func (d Decoder) Decode(buf []byte) ([]Value, error) {
-	s := state{
-		Block: d.root,
-		Size:  len(buf),
-		files: make(map[string]*os.File),
-	}
-
-	defer s.Close()
-	s.buffer = append(s.buffer, buf...)
-	err := s.decodeBlock(d.data.Block)
-
-	var exit *ExitError
-	if err != nil && errors.As(err, &exit) {
-		if exit.code == 0 {
-			err = nil
-		}
-	}
-	if err != nil && !errors.Is(err, ErrDone) {
-		return nil, err
-	}
-	return s.Values, nil
-}
-
 type state struct {
 	Block
 	Values []Value
 	files  map[string]*os.File
 
 	buffer []byte
-	Offset int
 	Pos    int
-	Size   int
+
+	reader *bufio.Reader
 }
 
 func (root *state) Close() error {
@@ -89,25 +41,36 @@ func (root *state) Close() error {
 	return err
 }
 
-func (root *state) Run(dat Block, buf []byte) error {
-	root.Reset(buf)
+func (root *state) Run(dat Block, r io.Reader) error {
+	root.Reset(r)
 	for {
-		root.Offset = 0
-		root.Values = root.Values[:0]
+		if err := root.growBuffer(0); err != nil {
+			return err
+		}
+		if root.Size() == 0 {
+			break
+		}
 		if err := root.decodeBlock(dat); err != nil {
 			if errors.Is(err, ErrDone) {
 				break
 			}
 			return err
 		}
+		root.Values = root.Values[:0]
+		root.buffer = root.buffer[root.Pos/numbit:]
+		root.Pos = 0
 	}
 	return nil
 }
 
-func (root *state) Reset(buf []byte) {
-	root.buffer = buf
-	root.Size = len(buf)
+func (root *state) Reset(r io.Reader) {
+	root.reader = bufio.NewReader(r)
+	root.buffer = root.buffer[:0]
 	root.Pos = 0
+}
+
+func (root *state) Size() int {
+	return len(root.buffer) * numbit
 }
 
 func (root *state) ResolveValue(n string) (Value, error) {
@@ -232,15 +195,32 @@ func (root *state) decodePrint(p Print) error {
 	return print(w, resolveValues(root, p.values))
 }
 
+func (root *state) growBuffer(bits int) error {
+	pos := (root.Pos + bits) / numbit
+	if bits > 0 && pos < len(root.buffer) {
+		return nil
+	}
+
+	xs := make([]byte, 4096+(bits/numbit))
+	n, err := root.reader.Read(xs)
+	if n > 0 {
+		root.buffer = append(root.buffer, xs[:n]...)
+	}
+	if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
+}
+
 func (root *state) decodeParameter(p Parameter) (Value, error) {
 	var (
 		bits   int
 		offset = root.Pos % numbit
 		index  = root.Pos / numbit
 	)
-	if index >= root.Size {
-		return nil, ErrDone
-	}
+	// if index >= len(root.buffer) {
+	// 	return nil, ErrDone
+	// }
 	switch p.size.Type {
 	case Ident, Text:
 		v, err := root.ResolveValue(p.size.Literal)
@@ -254,19 +234,27 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	default:
 		return nil, fmt.Errorf("unexpected token type")
 	}
+
 	var (
 		err error
 		raw Value
 	)
+
 	switch p.is() {
 	case kindBytes, kindString:
 		if offset != 0 {
 			err = fmt.Errorf("bytes/string should start at offset 0")
 			break
 		}
+		if err := root.growBuffer(bits * numbit); err != nil {
+			return nil, err
+		}
 		raw, err = root.decodeBytes(p, bits, index)
 		bits *= numbit
 	default:
+		if err := root.growBuffer(bits * numbit); err != nil {
+			return nil, err
+		}
 		raw, err = root.decodeNumber(p, bits, index, offset)
 		if err == nil {
 			err = evalApply(raw, p.apply, root)
@@ -285,13 +273,13 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		}
 	}
 	root.Pos += bits
-	root.Offset += bits
+
 	return raw, nil
 }
 
 func (root *state) decodeBytes(p Parameter, bits, index int) (Value, error) {
 	var (
-		meta = Meta{Id: p.id.Literal, Pos: root.Offset}
+		meta = Meta{Id: p.id.Literal, Pos: root.Pos}
 		raw  Value
 	)
 	switch p.is() {
@@ -322,12 +310,12 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 	if bits > 1 {
 		mask = (1 << bits) - 1
 	}
-	if n := root.Size; n < need {
+	if n := root.Size(); n < index+need {
 		return nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
 	}
 	meta := Meta{
 		Id:  p.id.Literal,
-		Pos: root.Offset,
+		Pos: root.Pos,
 	}
 	var (
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
@@ -456,13 +444,16 @@ func (root *state) decodeSeek(n SeekStmt) error {
 		return err
 	}
 	seek := int(asInt(v))
+	if err := root.growBuffer(seek); err != nil {
+		return err
+	}
 	if n.absolute {
 		root.Pos = seek
 	} else {
 		root.Pos += seek
 	}
-	if root.Pos < 0 || root.Pos > (root.Size*numbit) {
-		return fmt.Errorf("seek outside of buffer range (%d >= %d)", root.Pos, root.Size*numbit)
+	if root.Pos < 0 || root.Pos > root.Size() {
+		return fmt.Errorf("seek outside of buffer range (%d >= %d)", root.Pos, root.Size())
 	}
 	return nil
 }

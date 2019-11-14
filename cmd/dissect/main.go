@@ -22,7 +22,7 @@ func main() {
 	for i := 1; i < flag.NArg(); i++ {
 		files = append(files, flag.Arg(i))
 	}
-	if err := dissect.Dissect(r, files); err != nil {
+	if err := dissect.DissectFiles(r, files); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}

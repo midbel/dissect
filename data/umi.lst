@@ -10,8 +10,8 @@ data (
   orbit : uint 16
   state : uint 16, State
 
-  source: uint 8, Source
-  seek [-8]
+  #source: uint 8, Source
+  #seek [-8]
   code  : bytes 6
 
   type  : uint 8, Type
@@ -50,6 +50,6 @@ data (
   )
 
   #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
-  print eng as csv
-  #print
+  #print eng as csv
+  print
 )
