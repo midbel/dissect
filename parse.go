@@ -306,7 +306,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		case Keyword:
 			parse, ok := p.stmts[p.curr.Literal]
 			if !ok {
-				fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())
+				return nil, fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())
 			}
 			p.pushBlock(p.curr.Literal)
 			node, err = parse()

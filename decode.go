@@ -461,8 +461,8 @@ func (root *state) decodeSeek(n SeekStmt) error {
 	} else {
 		root.Pos += seek
 	}
-	if root.Pos < 0 || root.Pos >= (root.Size*numbit) {
-		return fmt.Errorf("seek outside of buffer range")
+	if root.Pos < 0 || root.Pos > (root.Size*numbit) {
+		return fmt.Errorf("seek outside of buffer range (%d >= %d)", root.Pos, root.Size*numbit)
 	}
 	return nil
 }
