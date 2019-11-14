@@ -27,16 +27,24 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
       param as float with 64
     )
     3 = (
-      param as bytes with length
+      let bitlen = length/8
+      param as bytes with bitlen
+      del bitlen
     )
     4 = (
       param as int with 32
     )
     5 = (
-      param as string with length
+      param as string with 8
     )
     6 = (
       param as int with 64
+    )
+    12 = (
+      param as string with length
+    )
+    7, 8, 9, 10, 11, 13 = (
+      param as bytes with length
     )
     14 = (
       seek 7
@@ -45,5 +53,6 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
   )
 
   #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
-  print
+  print eng as csv
+  #print debug as csv
 )

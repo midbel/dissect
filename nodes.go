@@ -464,14 +464,6 @@ func (b Block) ResolveData() (Data, error) {
 		}
 	}
 	return Data{}, fmt.Errorf("data block not found")
-	// dat, err := b.ResolveBlock(kwData)
-	// if err != nil {
-	// 	return dat, err
-	// }
-	// if !dat.isData() {
-	// 	err = fmt.Errorf("data block not found")
-	// }
-	// return dat, err
 }
 
 func (b Block) ResolveBlock(block string) (Block, error) {

@@ -93,7 +93,11 @@ func (root *state) Run(dat Block, buf []byte) error {
 	root.Reset(buf)
 	for {
 		root.Offset = 0
+		root.Values = root.Values[:0]
 		if err := root.decodeBlock(dat); err != nil {
+			if errors.Is(err, ErrDone) {
+				break
+			}
 			return err
 		}
 	}
@@ -104,7 +108,6 @@ func (root *state) Reset(buf []byte) {
 	root.buffer = buf
 	root.Size = len(buf)
 	root.Pos = 0
-	root.Values = root.Values[:0]
 }
 
 func (root *state) ResolveValue(n string) (Value, error) {

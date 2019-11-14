@@ -9,7 +9,7 @@ import (
 
 type printFunc func(io.Writer, []Value) error
 
- var printers = map[struct{ Format, Method string }]printFunc{
+var printers = map[struct{ Format, Method string }]printFunc{
 	{Format: fmtCSV, Method: methRaw}:     csvPrintRaw,
 	{Format: fmtCSV, Method: methEng}:     csvPrintEng,
 	{Format: fmtCSV, Method: methBoth}:    csvPrintBoth,
