@@ -1,0 +1,21 @@
+data (
+ coarse: uint 32
+ fine  : uint 32
+
+ magic : bytes 4
+
+ version: uint 2
+ ship   : uint 8
+ channel: uint 6
+
+ sequence: uint 24
+ replay  : uint 8
+
+ control: bytes 2
+ thing  : bytes 2
+
+ seek [1008*8]
+ crc: bytes 2
+
+ print raw
+)

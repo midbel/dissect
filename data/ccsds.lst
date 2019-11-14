@@ -57,6 +57,7 @@ enum DataType (
 
 define (
   Version = 0
+  numbit  = 8
 )
 
 block pid (
@@ -99,5 +100,6 @@ data (
   include[second==1] secondary
   include private
 
+  seek [(size*8) - (26*8)]
   print
 )

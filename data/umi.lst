@@ -50,6 +50,6 @@ data (
   )
 
   #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
-  #print eng as csv
-  print
+  print eng as csv
+  #print
 )
