@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+
+	"github.com/midbel/glob"
 )
 
 func Dissect(script io.Reader, fs []string) error {
@@ -18,13 +20,13 @@ func Dissect(script io.Reader, fs []string) error {
 		return err
 	}
 	var files []string
-	// if len(data.files) > 0 {
-	// 	for _, f := range data.files {
-	// 		files = append(files, f.Literal)
-	// 	}
-	// } else {
-	// 	files = fs
-	// }
+	if len(data.files) > 0 {
+		for _, f := range data.files {
+			files = append(files, f.Literal)
+		}
+	} else {
+		files = fs
+	}
 	s := state{
 		Block: root,
 		files: make(map[string]*os.File),
@@ -61,13 +63,33 @@ func walkFiles(files []string) <-chan string {
 		for _, f := range files {
 			i, err := os.Stat(f)
 			if err != nil {
+				globFiles(f, queue)
 				continue
 			}
 			if i.IsDir() {
+				filepath.Walk(f, func(p string, i os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					if i.Mode.().IsRegular() {
+						queue <- p
+					}
+					return nil
+				})
 				continue
 			}
 			queue <- f
 		}
 	}()
 	return queue
+}
+
+func globFiles(f string, queue chan<- string) {
+	g := glob.New("", f)
+	for n := g.Glob(); n != ""; n = g.Glob() {
+		i, err := os.Stat(n)
+		if err == nil && i.Mode().IsRegular() {
+			queue <- n
+		}
+	}
 }

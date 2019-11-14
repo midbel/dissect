@@ -1,8 +1,8 @@
 enum DaSS (
-  0 = "no value"
-  1 = "same value"
-  2 = "new value"
-  3 = "latest value"
+  0 = "missing"
+  1 = "same"
+  2 = "new"
+  3 = "latest"
   4 = "unavailable"
 )
 

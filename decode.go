@@ -239,7 +239,6 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		index  = root.Pos / numbit
 	)
 	if index >= root.Size {
-		fmt.Println(index, root.Size)
 		return nil, ErrDone
 	}
 	switch p.size.Type {

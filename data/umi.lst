@@ -3,7 +3,7 @@ import (
   "src/github.com/midbel/dissect/data/time.lst"
 )
 
-data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
+data "var/cdmcs/**/pp/**/*dat" (
   size  : uint 32 little
 
   dass  : uint 8, DaSS
@@ -31,16 +31,10 @@ data "var/cdmcs/**/pp/**/*dat" "tmp/*dat" (
       param as bytes with bitlen
       del bitlen
     )
-    4 = (
-      param as int with 32
-    )
-    5 = (
-      param as string with 8
-    )
-    6 = (
+    4, 6 = (
       param as int with 64
     )
-    12 = (
+    5, 12 = (
       param as string with length
     )
     7, 8, 9, 10, 11, 13 = (
