@@ -347,7 +347,7 @@ func appendRaw(buf []byte, v Value) []byte {
 	case *Uint:
 		buf = strconv.AppendUint(buf, v.Raw, 10)
 	case *Real:
-		buf = strconv.AppendFloat(buf, v.Raw, 'f', -1, 64)
+		buf = strconv.AppendFloat(buf, v.Raw, 'g', -1, 64)
 	case *Boolean:
 		buf = strconv.AppendBool(buf, v.Raw)
 	case *String:

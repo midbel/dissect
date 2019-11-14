@@ -296,19 +296,6 @@ func (t LetStmt) Pos() Position {
 	return t.id.Pos()
 }
 
-type Attr struct {
-	ref  Reference
-	attr Token
-}
-
-func (a Attr) Pos() Position {
-	return a.ref.Pos()
-}
-
-func (a Attr) String() string {
-	return fmt.Sprintf("%s.%s", a.ref, a.attr.Literal)
-}
-
 type Parameter struct {
 	id     Token
 	size   Token
