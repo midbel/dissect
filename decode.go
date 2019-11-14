@@ -74,13 +74,14 @@ type state struct {
 	files  map[string]*os.File
 
 	buffer []byte
+	Offset int
 	Pos    int
 	Size   int
 }
 
-func (s *state) Close() error {
+func (root *state) Close() error {
 	var err error
-	for _, f := range s.files {
+	for _, f := range root.files {
 		if e := f.Close(); e != nil {
 			err = e
 		}
@@ -88,9 +89,27 @@ func (s *state) Close() error {
 	return err
 }
 
-func (s *state) ResolveValue(n string) (Value, error) {
-	for i := len(s.Values) - 1; i >= 0; i-- {
-		v := s.Values[i]
+func (root *state) Run(dat Block, buf []byte) error {
+	root.Reset(buf)
+	for {
+		root.Offset = 0
+		if err := root.decodeBlock(dat); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (root *state) Reset(buf []byte) {
+	root.buffer = buf
+	root.Size = len(buf)
+	root.Pos = 0
+	root.Values = root.Values[:0]
+}
+
+func (root *state) ResolveValue(n string) (Value, error) {
+	for i := len(root.Values) - 1; i >= 0; i-- {
+		v := root.Values[i]
 		if v.String() == n {
 			return v, nil
 		}
@@ -98,13 +117,13 @@ func (s *state) ResolveValue(n string) (Value, error) {
 	return nil, fmt.Errorf("%s: value not defined", n)
 }
 
-func (s *state) DeleteValue(n string) {
+func (root *state) DeleteValue(n string) {
 	for i := 0; ; i++ {
-		if i >= len(s.Values) {
+		if i >= len(root.Values) {
 			break
 		}
-		if v := s.Values[i]; v.String() == n {
-			s.Values = append(s.Values[:i], s.Values[i+1:]...)
+		if v := root.Values[i]; v.String() == n {
+			root.Values = append(root.Values[:i], root.Values[i+1:]...)
 		}
 	}
 }
@@ -217,6 +236,7 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		index  = root.Pos / numbit
 	)
 	if index >= root.Size {
+		fmt.Println(index, root.Size)
 		return nil, ErrDone
 	}
 	switch p.size.Type {
@@ -263,12 +283,13 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		}
 	}
 	root.Pos += bits
+	root.Offset += bits
 	return raw, nil
 }
 
 func (root *state) decodeBytes(p Parameter, bits, index int) (Value, error) {
 	var (
-		meta = Meta{Id: p.id.Literal, Pos: root.Pos}
+		meta = Meta{Id: p.id.Literal, Pos: root.Offset}
 		raw  Value
 	)
 	switch p.is() {
@@ -304,7 +325,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 	}
 	meta := Meta{
 		Id:  p.id.Literal,
-		Pos: root.Pos,
+		Pos: root.Offset,
 	}
 	var (
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
