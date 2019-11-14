@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/midbel/glob"
 )
@@ -71,7 +72,7 @@ func walkFiles(files []string) <-chan string {
 					if err != nil {
 						return err
 					}
-					if i.Mode.().IsRegular() {
+					if i.Mode().IsRegular() {
 						queue <- p
 					}
 					return nil

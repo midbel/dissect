@@ -36,3 +36,24 @@ enum Type (
   14  = "bit"
   255 = "bytearray"
 )
+
+enum Source (
+  0X00 = "RESERVED"
+  0X0A = "ATV-CC"
+  0X0B = "REDU"
+  0X0C = "CC-MCS"
+  0X0D = "TEST"
+  0X0E = "ESC"
+  0XAD = "ANCILLARY DATA"
+  0XC1 = "H&S DATA"
+  0XE1 = "MCC-H"
+  0XE2 = "MCC-M"
+  0XE3 = "HOSC"
+  0XE4 = "MCC-M"
+  0XEA = "EAC"
+  0X11 = "ERASMUS"
+  0X12 = "BUSOC"
+  0X13 = "MUSC"
+  0X14 = "CADMOS"
+  0X15 = "MARS"
+)

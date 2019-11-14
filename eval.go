@@ -69,24 +69,22 @@ func evalBinary(b Binary, root *state) (Value, error) {
 }
 
 func evalUnary(u Unary, root *state) (Value, error) {
-	var val Value
 	switch u.operator {
 	case Not:
 		v, err := eval(u.Right, root)
 		if err != nil {
 			return nil, err
 		}
-		val = anonymousBool(asBool(v))
+		return anonymousBool(asBool(v)), nil
 	case Min:
 		val, err := eval(u.Right, root)
 		if err != nil {
 			return nil, err
 		}
-		val, err = val.reverse()
+		return val.reverse()
 	default:
 		return nil, fmt.Errorf("unsupported unary operator")
 	}
-	return val, nil
 }
 
 func evalLiteral(i Literal, _ *state) (Value, error) {

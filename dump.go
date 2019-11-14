@@ -64,7 +64,7 @@ func dumpNode(n Node, level int) error {
 		}
 		fmt.Printf("%s)", indent)
 	case SeekStmt:
-		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset.Literal, n.Pos())
+		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset, n.Pos())
 	case Match:
 		fmt.Printf("%smatch(name=%s, pos=%s) (\n", indent, n.id.Literal, n.Pos())
 		for _, n := range n.nodes {

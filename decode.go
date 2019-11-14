@@ -451,10 +451,11 @@ func (root *state) decodeBreak(n Break) error {
 }
 
 func (root *state) decodeSeek(n SeekStmt) error {
-	seek, err := strconv.Atoi(n.offset.Literal)
+	v, err := eval(n.offset, root)
 	if err != nil {
-		return fmt.Errorf("invalid seek value given")
+		return err
 	}
+	seek := int(asInt(v))
 	if n.absolute {
 		root.Pos = seek
 	} else {

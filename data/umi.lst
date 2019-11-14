@@ -3,12 +3,15 @@ import (
   "src/github.com/midbel/dissect/data/time.lst"
 )
 
-data "var/cdmcs/**/pp/**/*dat" (
+data (
   size  : uint 32 little
 
   dass  : uint 8, DaSS
   orbit : uint 16
   state : uint 16, State
+
+  source: uint 8, Source
+  seek [-8]
   code  : bytes 6
 
   type  : uint 8, Type
@@ -41,12 +44,12 @@ data "var/cdmcs/**/pp/**/*dat" (
       param as bytes with length
     )
     14 = (
-      seek 7
+      seek [7]
       param: int 1
     )
   )
 
   #print <raw|eng|both|debug> to <file> as <csv|table> with <values...>
-  print eng as csv
-  #print debug as csv
+  #print eng as csv
+  print
 )

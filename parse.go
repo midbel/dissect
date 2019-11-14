@@ -371,10 +371,17 @@ func (p *Parser) parseSeek() (Node, error) {
 		k.absolute = true
 		p.nextToken()
 	}
-	if !p.curr.isNumber() {
-		return nil, fmt.Errorf("seek: expected number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	if p.curr.Type != lsquare {
+		return nil, fmt.Errorf("seek: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	k.offset = p.curr
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	// if !p.curr.isNumber() {
+	// 	return nil, fmt.Errorf("seek: expected number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	// }
+	k.offset = expr
 	p.nextToken()
 	return k, nil
 }
@@ -506,6 +513,7 @@ func (p *Parser) parsePrefix() (Expression, error) {
 	var expr Expression
 	switch p.curr.Type {
 	case Not, Min:
+		op := p.curr.Type
 		p.nextToken()
 		right, err := p.parseExpression(bindUnary)
 		if err != nil {
@@ -513,7 +521,7 @@ func (p *Parser) parsePrefix() (Expression, error) {
 		}
 		expr = Unary{
 			Right:    right,
-			operator: p.curr.Type,
+			operator: op,
 		}
 	case lparen:
 		p.nextToken()
