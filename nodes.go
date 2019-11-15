@@ -195,6 +195,20 @@ func (t Ternary) exprNode() Node {
 	return t
 }
 
+type Echo struct {
+	pos     Position
+	pattern Token
+	values  []Token
+}
+
+func (e Echo) Pos() Position {
+	return e.pos
+}
+
+func (e Echo) String() string {
+	return "echo"
+}
+
 type Print struct {
 	pos    Position
 	file   Token
@@ -357,6 +371,7 @@ type Match struct {
 	pos   Position
 	id    Token
 	nodes []MatchCase
+	alt   MatchCase
 }
 
 func (m Match) Pos() Position {

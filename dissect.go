@@ -11,6 +11,7 @@ const (
 	Ident
 	Text
 	Keyword
+	Internal
 	Integer
 	Float
 	Bool
@@ -40,6 +41,7 @@ const (
 )
 
 const (
+	dollar     = '$'
 	space      = ' '
 	tab        = '\t'
 	lparen     = '('
@@ -133,6 +135,7 @@ const (
 	kwBreak    = "break"
 	kwContinue = "continue"
 	kwPrint    = "print"
+	kwEcho     = "echo"
 	kwInline   = "inline"
 	kwLet      = "let"
 	kwDel      = "del"
@@ -166,6 +169,7 @@ var keywords = []string{
 	kwDeclare,
 	kwDefine,
 	kwPrint,
+	kwEcho,
 	kwBreak,
 	kwContinue,
 	kwLet,
@@ -264,7 +268,7 @@ func (t Token) String() string {
 		return ">"
 	case GreatEq:
 		return ">="
-	case Ident, Text, Float, Integer, Bool, Keyword:
+	case Ident, Text, Float, Integer, Bool, Keyword, Internal:
 		return t.Literal
 	default:
 		return string(t.Type)
@@ -336,6 +340,8 @@ func TokenString(t Token) string {
 		return "<eof>"
 	case Ident:
 		str = "ident"
+	case Internal:
+		str = "internal"
 	case Keyword:
 		str = "keyword"
 	case Text:

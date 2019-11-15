@@ -84,6 +84,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwBreak:    p.parseBreak,
 		kwContinue: p.parseContinue,
 		kwPrint:    p.parsePrint,
+		kwEcho:     p.parseEcho,
 	}
 	if err := p.pushFrame(r); err != nil {
 		return nil, err
@@ -128,6 +129,25 @@ func (p *Parser) Parse() (Node, error) {
 		}
 	}
 	return root, nil
+}
+
+func (p *Parser) parseEcho() (Node, error) {
+	e := Echo{pos: p.curr.Pos()}
+	p.nextToken()
+	if p.curr.Type == Text {
+		e.pattern = p.curr
+		p.nextToken()
+	}
+	p.nextToken()
+	for !p.isDone() {
+		if p.curr.Type == Newline {
+			break
+		}
+		e.values = append(e.values, p.curr)
+		p.nextToken()
+	}
+	p.nextToken()
+	return e, nil
 }
 
 func (p *Parser) parsePrint() (Node, error) {

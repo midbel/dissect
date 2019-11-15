@@ -109,6 +109,8 @@ func (root *state) decodeBlock(data Block) error {
 			return root.decodeBreak(n)
 		case Continue:
 			return root.decodeContinue(n)
+		case Echo:
+			return root.decodeEcho(n)
 		case Print:
 			return root.decodePrint(n)
 		case ExitStmt:
@@ -171,6 +173,10 @@ func (root *state) decodeBlock(data Block) error {
 			return fmt.Errorf("unexpected node type %T", n)
 		}
 	}
+	return nil
+}
+
+func (root *state) decodeEcho(e Echo) error {
 	return nil
 }
 

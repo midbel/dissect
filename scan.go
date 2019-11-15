@@ -52,6 +52,13 @@ func (s *Scanner) Scan() Token {
 	}
 
 	switch {
+	case s.char == dollar:
+		s.readByte()
+		if tok = s.Scan(); tok.Type != Ident {
+			tok.Type = Illegal
+		} else {
+			tok.Type = Internal
+		}
 	case isLetter(s.char):
 		s.scanIdent(&tok)
 	case isDigit(s.char): // || s.char == minus:
