@@ -57,7 +57,7 @@ func csvPrintDebug(w io.Writer, values []Value) error {
 	for _, v := range values {
 		var (
 			offset = v.Offset()
-			index  = offset / 8
+			index  = offset / numbit
 		)
 
 		buf.WriteString(strconv.Itoa(index))
