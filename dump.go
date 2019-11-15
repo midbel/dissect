@@ -70,8 +70,14 @@ func dumpNode(n Node, level int) error {
 		for _, n := range n.nodes {
 			dumpNode(n, level+1)
 		}
+		if n.alt.Pos().IsValid() {
+			dumpNode(n.alt, level+1)
+		}
 		fmt.Printf("%s)", indent)
 	case MatchCase:
+		if n.cond.Type == underscore {
+			n.cond.Literal = "default"
+		}
 		fmt.Printf("%scase(cond=%s) (\n", indent, n.cond.Literal)
 		dumpNode(n.node, level+1)
 		fmt.Printf("%s)", indent)

@@ -28,6 +28,9 @@ type state struct {
 	buffer []byte
 	Pos    int
 
+	currentBlock string
+	currentFile  string
+
 	reader *bufio.Reader
 }
 
@@ -64,6 +67,11 @@ func (root *state) Run(dat Block, r io.Reader) error {
 }
 
 func (root *state) Reset(r io.Reader) {
+	if n, ok := r.(interface{ Name() string }); ok {
+		root.currentFile = n.Name()
+	} else {
+		root.currentFile = "stream"
+	}
 	root.reader = bufio.NewReader(r)
 	root.buffer = root.buffer[:0]
 	root.Pos = 0
@@ -398,9 +406,14 @@ func (root *state) decodeMatch(n Match) error {
 			break
 		}
 	}
+
 	if node == nil {
-		return nil
+		if pos := n.alt.Pos(); !pos.IsValid() {
+			return nil
+		}
+		node = n.alt.node
 	}
+
 	var dat Block
 	switch n := node.(type) {
 	case Reference:

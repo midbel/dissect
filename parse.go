@@ -602,9 +602,21 @@ func (p *Parser) parseMatch() (Node, error) {
 			if p.curr.Type == Assign {
 				break
 			}
+			if p.curr.Type == underscore {
+				if p.peek.Type != Assign {
+					return nil, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+				}
+				if pos := m.alt.Pos(); pos.IsValid() {
+					return nil, fmt.Errorf("match: default branch already defined (%s)", p.curr.Pos())
+				}
+				m.alt = MatchCase{cond: p.curr}
+				p.nextToken()
+				break
+			}
 			if p.curr.Type != Integer {
 				return nil, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 			}
+
 			mcs = append(mcs, MatchCase{cond: p.curr})
 			p.nextToken()
 			if p.curr.Type == comma {
@@ -639,8 +651,12 @@ func (p *Parser) parseMatch() (Node, error) {
 		default:
 			return nil, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
-		for i := range mcs {
-			mcs[i].node = node
+		if len(mcs) == 0 {
+			m.alt.node = node
+		} else {
+			for i := range mcs {
+				mcs[i].node = node
+			}
 		}
 		m.nodes = append(m.nodes, mcs...)
 	}
