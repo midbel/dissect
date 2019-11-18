@@ -112,7 +112,7 @@ func dumpNode(n Node, level int) error {
 	case Parameter:
 		fmt.Printf("%sparameter(name=%s, type=%s, size=%s, pos=%s)", indent, n.id.Literal, n.kind.Literal, n.size.Literal, n.Pos())
 	case Constant:
-		fmt.Printf("%sconstant(name=%s, value=%s, pos=%s)", indent, n.id.Literal, n.value.Literal, n.Pos())
+		fmt.Printf("%sconstant(name=%s, value=%s, pos=%s)", indent, n.id.Literal, n.value, n.Pos())
 	default:
 		return fmt.Errorf("unexpected node type: %T", n)
 	}

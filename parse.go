@@ -467,7 +467,10 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	for !(p.peek.Type == rsquare || p.peek.Type == Newline) && pow < bindPower(p.peek) {
+	checkPeek := func(peek Token) bool {
+		return peek.Type == rsquare || peek.Type == Newline || peek.Type == Comment
+	}
+	for !checkPeek(p.peek) && pow < bindPower(p.peek) {
 		p.nextToken()
 		switch p.curr.Type {
 		case Cond:
@@ -554,9 +557,9 @@ func (p *Parser) parsePrefix() (Expression, error) {
 		}
 		p.nextToken()
 		expr = n
-	case Integer, Float, Bool:
+	case Integer, Float, Bool, Text:
 		expr = Literal{id: p.curr}
-	case Ident, Text:
+	case Ident:
 		expr = Identifier{id: p.curr}
 	default:
 		return nil, fmt.Errorf("expression: unexpected token type %s (%s)", TokenString(p.curr), p.curr.Pos())
@@ -888,22 +891,27 @@ func (p *Parser) parseAssignment() (Node, error) {
 	if p.curr.Type != Assign {
 		return nil, fmt.Errorf("assign: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	p.nextToken()
-	switch p.curr.Type {
-	case Integer, Float, Text, Ident, Bool:
-		node.value = p.curr
-	default:
-		return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
 	}
-	p.nextToken()
-	switch p.curr.Type {
-	case Comment:
-		p.skipComment()
-	case Newline:
-		p.nextToken()
-	default:
-		return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-	}
+	node.value = expr
+	// p.nextToken()
+	// switch p.curr.Type {
+	// case Integer, Float, Text, Ident, Bool:
+	// 	node.value = p.curr
+	// default:
+	// 	return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	// }
+	// p.nextToken()
+	// switch p.curr.Type {
+	// case Comment:
+	// 	p.skipComment()
+	// case Newline:
+	// 	p.nextToken()
+	// default:
+	// 	return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	// }
 	return node, nil
 }
 

@@ -586,10 +586,14 @@ func (root *state) evalPoint(cs []Constant, v Value) (Value, error) {
 		c := cs[i]
 		id, _ := strconv.ParseInt(c.id.Literal, 0, 64)
 		if raw == id {
-			val, _ := strconv.ParseFloat(c.value.Literal, 64)
+			val, err := eval(c.value, root)
+			if err != nil {
+				return nil, err
+			}
+			// val, _ := strconv.ParseFloat(c.value.Literal, 64)
 			return &Real{
 				Meta: Meta{Id: v.String()},
-				Raw:  val,
+				Raw:  asReal(val),
 			}, nil
 		}
 		if j := i + 1; j < len(cs) {
@@ -608,9 +612,13 @@ func (root *state) evalEnum(cs []Constant, v Value) (Value, error) {
 	for _, c := range cs {
 		id, _ := strconv.ParseInt(c.id.Literal, 0, 64)
 		if raw == id {
+			str, err := eval(c.value, root)
+			if err != nil {
+				return nil, err
+			}
 			v := &String{
 				Meta: Meta{Id: v.String()},
-				Raw:  c.value.Literal,
+				Raw:  asString(str), // c.value.Literal,
 			}
 			return v, nil
 		}
@@ -624,8 +632,12 @@ func (root *state) evalPoly(cs []Constant, v Value) (Value, error) {
 		eng float64
 	)
 	for _, c := range cs {
+		pv, err := eval(c.value, root)
+		if err != nil {
+			return nil, err
+		}
 		mul, _ := strconv.ParseFloat(c.id.Literal, 64)
-		pow, _ := strconv.ParseFloat(c.value.Literal, 64)
+		pow := asReal(pv) // strconv.ParseFloat(c.value.Literal, 64)
 
 		eng += mul * math.Pow(raw, pow)
 	}

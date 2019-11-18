@@ -412,12 +412,12 @@ func (i Include) Pos() Position {
 
 type Constant struct {
 	id    Token
-	value Token
+	value Expression // Token
 	kind  Kind
 }
 
 func (c Constant) String() string {
-	return fmt.Sprintf("%s(%s)", c.id.Literal, c.value.Literal)
+	return fmt.Sprintf("%s(%s)", c.id.Literal, c.value)
 }
 
 func (c Constant) Pos() Position {

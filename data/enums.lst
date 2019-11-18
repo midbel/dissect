@@ -7,16 +7,16 @@ enum DaSS (
 )
 
 enum State (
-  0     = nominal
-  1     = missing
-  2     = dead
-  4     = offScaleHigh
-  8     = offScaleLow
-  16    = static
-  128   = unavailable
-  2048  = exception
-  8192  = change
-  32768 = override
+  0     = "nominal"
+  1     = "missing"
+  2     = "dead"
+  4     = "offScaleHigh"
+  8     = "offScaleLow"
+  16    = "static"
+  128   = "unavailable"
+  2048  = "exception"
+  8192  = "change"
+  32768 = "override"
 )
 
 enum Type (
