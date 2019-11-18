@@ -10,8 +10,8 @@ data (
   orbit : uint 16
   state : uint 16, State
 
-  #source: uint 8, Source
-  #seek [-8]
+  source: uint 8, Source
+  seek [-8]
   code  : bytes 6
 
   type  : uint 8, Type

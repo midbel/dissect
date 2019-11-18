@@ -232,9 +232,7 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		offset = root.Pos % numbit
 		index  = root.Pos / numbit
 	)
-	// if index >= len(root.buffer) {
-	// 	return nil, ErrDone
-	// }
+
 	switch p.size.Type {
 	case Ident, Text:
 		v, err := root.ResolveValue(p.size.Literal)
@@ -271,7 +269,7 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 		}
 		raw, err = root.decodeNumber(p, bits, index, offset)
 		if err == nil {
-			err = evalApply(raw, p.apply, root)
+			err = root.evalApply(raw, p.apply)
 		}
 	}
 	if err != nil {
@@ -556,7 +554,7 @@ func (root *state) decodeInclude(n Include) error {
 	return err
 }
 
-func evalApply(v Value, n Node, root *state) error {
+func (root *state) evalApply(v Value, n Node) error {
 	tok, ok := n.(Token)
 	if !ok {
 		v.Set(v)
@@ -566,21 +564,23 @@ func evalApply(v Value, n Node, root *state) error {
 	if err != nil {
 		return err
 	}
-	var fn func([]Constant, Value) Value
+	var fn func([]Constant, Value) (Value, error)
 	switch p.kind.Literal {
 	case kwEnum:
-		fn = evalEnum
+		fn = root.evalEnum
 	case kwPoly:
-		fn = evalPoly
+		fn = root.evalPoly
 	case kwPoint:
-		fn = evalPoint
+		fn = root.evalPoint
 	}
-	x := fn(p.nodes, v)
-	v.Set(x)
-	return nil
+	x, err := fn(p.nodes, v)
+	if err == nil {
+		v.Set(x)
+	}
+	return err
 }
 
-func evalPoint(cs []Constant, v Value) Value {
+func (root *state) evalPoint(cs []Constant, v Value) (Value, error) {
 	raw := asInt(v)
 	for i := 0; i < len(cs); i++ {
 		c := cs[i]
@@ -590,7 +590,7 @@ func evalPoint(cs []Constant, v Value) Value {
 			return &Real{
 				Meta: Meta{Id: v.String()},
 				Raw:  val,
-			}
+			}, nil
 		}
 		if j := i + 1; j < len(cs) {
 			next, _ := strconv.ParseInt(cs[j].id.Literal, 0, 64)
@@ -600,10 +600,10 @@ func evalPoint(cs []Constant, v Value) Value {
 			}
 		}
 	}
-	return v
+	return v, nil
 }
 
-func evalEnum(cs []Constant, v Value) Value {
+func (root *state) evalEnum(cs []Constant, v Value) (Value, error) {
 	raw := asInt(v)
 	for _, c := range cs {
 		id, _ := strconv.ParseInt(c.id.Literal, 0, 64)
@@ -612,13 +612,13 @@ func evalEnum(cs []Constant, v Value) Value {
 				Meta: Meta{Id: v.String()},
 				Raw:  c.value.Literal,
 			}
-			return v
+			return v, nil
 		}
 	}
-	return nil
+	return v, nil
 }
 
-func evalPoly(cs []Constant, v Value) Value {
+func (root *state) evalPoly(cs []Constant, v Value) (Value, error) {
 	var (
 		raw = asReal(v)
 		eng float64
@@ -632,7 +632,7 @@ func evalPoly(cs []Constant, v Value) Value {
 	return &Real{
 		Meta: Meta{Id: v.String()},
 		Raw:  eng,
-	}
+	}, nil
 }
 
 func swapBytes(buf []byte, e string) []byte {
