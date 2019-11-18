@@ -383,6 +383,25 @@ func appendEng(buf []byte, v Value) []byte {
 	return appendRaw(buf, eng)
 }
 
+func asString(v Value) string {
+	switch v := v.(type) {
+	case *Int:
+		return strconv.FormatInt(v.Raw, 10)
+	case *Uint:
+		return strconv.FormatUint(v.Raw, 10)
+	case *Real:
+		return strconv.FormatFloat(v.Raw, 'g', -1, 64)
+	case *Boolean:
+		return strconv.FormatBool(v.Raw)
+	case *Bytes:
+		return hex.EncodeToString(v.Raw)
+	case *String:
+		return v.Raw
+	default:
+		return ""
+	}
+}
+
 func asReal(v Value) float64 {
 	switch v := v.(type) {
 	case *Real:
