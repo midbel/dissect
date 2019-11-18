@@ -23,6 +23,7 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
 	)
+	buf.WriteRune(lparen)
 	for _, v := range values {
 		buf.WriteRune(lparen)
 
@@ -42,9 +43,10 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 		buf.Write(appendEng(dat, v))
 
 		buf.WriteRune(rparen)
-		if _, err := io.Copy(w, &buf); err != nil {
-			return err
-		}
+	}
+	buf.WriteRune(rparen)
+	if _, err := io.Copy(w, &buf); err != nil {
+		return err
 	}
 	return nil
 }
