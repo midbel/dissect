@@ -538,5 +538,5 @@ func (b Block) ResolvePair(pair string) (Pair, error) {
 			return p, nil
 		}
 	}
-	return Pair{}, fmt.Errorf("%s: pair not defined")
+	return Pair{}, fmt.Errorf("%s: pair not defined", pair)
 }
