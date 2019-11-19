@@ -226,7 +226,6 @@ func evalBitwise(b Binary, root *state) (Value, error) {
 		return nil, err
 	}
 
-	var val Value
 	switch b.operator {
 	case BitAnd:
 		return left.and(right)
@@ -237,9 +236,8 @@ func evalBitwise(b Binary, root *state) (Value, error) {
 	case ShiftRight:
 		return left.rightshift(right)
 	default:
-		err = fmt.Errorf("unsupported bitwise operator")
+		return nil, fmt.Errorf("unsupported bitwise operator")
 	}
-	return val, err
 }
 
 func anonymousBool(ok bool) Value {

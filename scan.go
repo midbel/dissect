@@ -171,6 +171,12 @@ func (s *Scanner) scanNumber(tok *Token) {
 		for accept(s.char) {
 			s.readRune()
 		}
+		if s.char == 'e' || s.char == 'E' {
+			s.scanExponent()
+		}
+		tok.Type = Float
+	case (s.char == 'e' || s.char == 'E') && !nodot:
+		s.scanExponent()
 		tok.Type = Float
 	case s.char == dot && nodot:
 		tok.Type = Illegal
@@ -180,6 +186,16 @@ func (s *Scanner) scanNumber(tok *Token) {
 
 	tok.Literal = string(s.buffer[pos:s.pos])
 	s.unreadRune()
+}
+
+func (s *Scanner) scanExponent() {
+	s.readRune()
+	if s.char == minus {
+		s.readRune()
+	}
+	for isDigit(s.char) {
+		s.readRune()
+	}
 }
 
 func (s *Scanner) scanText(tok *Token) {
