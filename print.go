@@ -38,9 +38,9 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 		buf.WriteRune(colon)
 		buf.WriteString(v.String())
 		buf.WriteRune(colon)
-		buf.Write(appendRaw(dat, v))
+		buf.Write(appendRaw(dat, v, false))
 		buf.WriteRune(colon)
-		buf.Write(appendEng(dat, v))
+		buf.Write(appendEng(dat, v, false))
 
 		buf.WriteRune(rparen)
 	}
@@ -54,7 +54,7 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 func csvPrintDebug(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
-		dat = make([]byte, 0, 32)
+		dat = make([]byte, 0, 64)
 	)
 	for _, v := range values {
 		var (
@@ -62,15 +62,25 @@ func csvPrintDebug(w io.Writer, values []Value) error {
 			index  = offset / numbit
 		)
 
+		buf.WriteRune('"')
 		buf.WriteString(strconv.Itoa(index))
+		buf.WriteRune('"')
 		buf.WriteRune(comma)
+		buf.WriteRune('"')
 		buf.WriteString(strconv.Itoa(offset))
+		buf.WriteRune('"')
 		buf.WriteRune(comma)
+		buf.WriteRune('"')
 		buf.WriteString(v.String())
+		buf.WriteRune('"')
 		buf.WriteRune(comma)
-		buf.Write(appendRaw(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendRaw(dat, v, true))
+		buf.WriteRune('"')
 		buf.WriteRune(comma)
-		buf.Write(appendEng(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendEng(dat, v, true))
+		buf.WriteRune('"')
 		buf.WriteString("\r\n")
 
 		if _, err := io.Copy(w, &buf); err != nil {
@@ -83,13 +93,15 @@ func csvPrintDebug(w io.Writer, values []Value) error {
 func csvPrintRaw(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
-		dat []byte
+		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
-		buf.Write(appendRaw(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendRaw(dat, v, true))
+		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
 	_, err := io.Copy(w, &buf)
@@ -99,13 +111,15 @@ func csvPrintRaw(w io.Writer, values []Value) error {
 func csvPrintEng(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
-		dat []byte
+		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
-		buf.Write(appendEng(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendEng(dat, v, true))
+		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
 	_, err := io.Copy(w, &buf)
@@ -115,15 +129,19 @@ func csvPrintEng(w io.Writer, values []Value) error {
 func csvPrintBoth(w io.Writer, values []Value) error {
 	var (
 		buf bytes.Buffer
-		dat []byte
+		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
-		buf.Write(appendRaw(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendRaw(dat, v, true))
+		buf.WriteRune('"')
 		buf.WriteRune(comma)
-		buf.Write(appendEng(dat, v))
+		buf.WriteRune('"')
+		buf.Write(appendEng(dat, v, true))
+		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
 	_, err := io.Copy(w, &buf)

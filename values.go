@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 var (
@@ -340,7 +341,7 @@ func (s *String) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) reverse() (Value, error)         { return nil, ErrUnsupported }
 
-func appendRaw(buf []byte, v Value) []byte {
+func appendRaw(buf []byte, v Value, escape bool) []byte {
 	switch v := v.(type) {
 	case *Int:
 		buf = strconv.AppendInt(buf, v.Raw, 10)
@@ -351,16 +352,25 @@ func appendRaw(buf []byte, v Value) []byte {
 	case *Boolean:
 		buf = strconv.AppendBool(buf, v.Raw)
 	case *String:
-		buf = append(buf, []byte(v.Raw)...)
+		strmap := func (r rune) rune {
+			if !unicode.IsPrint(r) {
+				r = '*'
+			}
+			return r
+		}
+		buf = bytes.Map(strmap, []byte(v.Raw))
+		if escape {
+			buf = escapeQuotes(buf)
+		}
 	case *Bytes:
 		x := hex.EncodeToString(v.Raw)
-		buf = append(buf, []byte(x)...)
+		buf = []byte(x)
 	default:
 	}
 	return buf
 }
 
-func appendEng(buf []byte, v Value) []byte {
+func appendEng(buf []byte, v Value, escape bool) []byte {
 	var eng Value
 	switch v := v.(type) {
 	case *Int:
@@ -380,7 +390,11 @@ func appendEng(buf []byte, v Value) []byte {
 	if eng == nil {
 		eng = v
 	}
-	return appendRaw(buf, eng)
+	return appendRaw(buf, eng, escape)
+}
+
+func escapeQuotes(buf []byte) []byte {
+	return bytes.ReplaceAll(buf, []byte("\""), []byte("\"\""))
 }
 
 func asString(v Value) string {
