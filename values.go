@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var (
@@ -21,12 +22,17 @@ type Value interface {
 	Cmp(v Value) int
 	Set(v Value)
 
-	add(v Value) (Value, error)
-	subtract(v Value) (Value, error)
-	multiply(v Value) (Value, error)
-	divide(v Value) (Value, error)
-	modulo(v Value) (Value, error)
+	add(Value) (Value, error)
+	subtract(Value) (Value, error)
+	multiply(Value) (Value, error)
+	divide(Value) (Value, error)
+	modulo(Value) (Value, error)
 	reverse() (Value, error)
+
+	leftshift(Value) (Value, error)
+	rightshift(Value) (Value, error)
+	and(Value) (Value, error)
+	or(Value) (Value, error)
 
 	setId(string)
 }
@@ -88,6 +94,22 @@ func (n *Null) reverse() (Value, error) {
 	return n, nil
 }
 
+func (n *Null) leftshift(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) rightshift(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) and(v Value) (Value, error) {
+	return null2null(v)
+}
+
+func (n *Null) or(v Value) (Value, error) {
+	return null2null(v)
+}
+
 type Boolean struct {
 	Meta
 	Raw bool
@@ -107,12 +129,16 @@ func (b *Boolean) Cmp(v Value) int {
 	return 1
 }
 
-func (b *Boolean) add(v Value) (Value, error)      { return nil, ErrUnsupported }
-func (b *Boolean) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
-func (b *Boolean) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
-func (b *Boolean) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (b *Boolean) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (b *Boolean) reverse() (Value, error)         { return nil, ErrUnsupported }
+func (b *Boolean) add(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (b *Boolean) subtract(_ Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Boolean) multiply(_ Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Boolean) divide(_ Value) (Value, error)     { return nil, ErrUnsupported }
+func (b *Boolean) modulo(_ Value) (Value, error)     { return nil, ErrUnsupported }
+func (b *Boolean) reverse() (Value, error)           { return nil, ErrUnsupported }
+func (b *Boolean) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (b *Boolean) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Boolean) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (b *Boolean) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type Int struct {
 	Meta
@@ -180,6 +206,11 @@ func (i *Int) reverse() (Value, error) {
 	return &x, nil
 }
 
+func (i *Int) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (i *Int) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (i *Int) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (i *Int) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
+
 type Uint struct {
 	Meta
 	Raw uint64
@@ -240,7 +271,11 @@ func (i *Uint) modulo(v Value) (Value, error) {
 	return &x, nil
 }
 
-func (i *Uint) reverse() (Value, error) { return nil, ErrUnsupported }
+func (i *Uint) reverse() (Value, error)           { return nil, ErrUnsupported }
+func (i *Uint) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (i *Uint) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (i *Uint) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (i *Uint) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type Real struct {
 	Meta
@@ -301,6 +336,11 @@ func (r *Real) reverse() (Value, error) {
 	return &x, nil
 }
 
+func (r *Real) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (r *Real) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (r *Real) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (r *Real) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
+
 type Bytes struct {
 	Meta
 	Raw []byte
@@ -314,12 +354,16 @@ func (b *Bytes) Cmp(v Value) int {
 	return bytes.Compare(b.Raw, str.Raw)
 }
 
-func (b *Bytes) add(v Value) (Value, error)      { return nil, ErrUnsupported }
-func (b *Bytes) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
-func (b *Bytes) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
-func (b *Bytes) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (b *Bytes) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (b *Bytes) reverse() (Value, error)         { return nil, ErrUnsupported }
+func (b *Bytes) add(v Value) (Value, error)        { return nil, ErrUnsupported }
+func (b *Bytes) subtract(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Bytes) multiply(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (b *Bytes) divide(v Value) (Value, error)     { return nil, ErrUnsupported }
+func (b *Bytes) modulo(v Value) (Value, error)     { return nil, ErrUnsupported }
+func (b *Bytes) reverse() (Value, error)           { return nil, ErrUnsupported }
+func (b *Bytes) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (b *Bytes) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (b *Bytes) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (b *Bytes) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type String struct {
 	Meta
@@ -334,12 +378,16 @@ func (s *String) Cmp(v Value) int {
 	return strings.Compare(s.Raw, str.Raw)
 }
 
-func (s *String) add(v Value) (Value, error)      { return nil, ErrUnsupported }
-func (s *String) subtract(v Value) (Value, error) { return nil, ErrUnsupported }
-func (s *String) multiply(v Value) (Value, error) { return nil, ErrUnsupported }
-func (s *String) divide(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (s *String) modulo(v Value) (Value, error)   { return nil, ErrUnsupported }
-func (s *String) reverse() (Value, error)         { return nil, ErrUnsupported }
+func (s *String) add(v Value) (Value, error)        { return nil, ErrUnsupported }
+func (s *String) subtract(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (s *String) multiply(v Value) (Value, error)   { return nil, ErrUnsupported }
+func (s *String) divide(v Value) (Value, error)     { return nil, ErrUnsupported }
+func (s *String) modulo(v Value) (Value, error)     { return nil, ErrUnsupported }
+func (s *String) reverse() (Value, error)           { return nil, ErrUnsupported }
+func (s *String) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (s *String) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (s *String) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (s *String) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 func appendRaw(buf []byte, v Value, escape bool) []byte {
 	switch v := v.(type) {
@@ -352,8 +400,8 @@ func appendRaw(buf []byte, v Value, escape bool) []byte {
 	case *Boolean:
 		buf = strconv.AppendBool(buf, v.Raw)
 	case *String:
-		strmap := func (r rune) rune {
-			if !unicode.IsPrint(r) {
+		strmap := func(r rune) rune {
+			if r == utf8.RuneError || !unicode.IsPrint(r) {
 				r = '*'
 			}
 			return r

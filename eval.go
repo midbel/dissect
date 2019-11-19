@@ -225,14 +225,17 @@ func evalBitwise(b Binary, root *state) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _ = left, right
 
 	var val Value
 	switch b.operator {
 	case BitAnd:
+		return left.and(right)
 	case BitOr:
+		return left.or(right)
 	case ShiftLeft:
+		return left.leftshift(right)
 	case ShiftRight:
+		return left.rightshift(right)
 	default:
 		err = fmt.Errorf("unsupported bitwise operator")
 	}
