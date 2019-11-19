@@ -206,10 +206,41 @@ func (i *Int) reverse() (Value, error) {
 	return &x, nil
 }
 
-func (i *Int) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
-func (i *Int) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
-func (i *Int) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
-func (i *Int) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
+func (i *Int) leftshift(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw >> asInt(v)
+	return &x, nil
+}
+
+func (i *Int) rightshift(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw << asInt(v)
+	return &x, nil
+}
+
+func (i *Int) and(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw & asInt(v)
+	return &x, nil
+}
+
+func (i *Int) or(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw | asInt(v)
+	return &x, nil
+}
 
 type Uint struct {
 	Meta
@@ -271,11 +302,43 @@ func (i *Uint) modulo(v Value) (Value, error) {
 	return &x, nil
 }
 
-func (i *Uint) reverse() (Value, error)           { return nil, ErrUnsupported }
-func (i *Uint) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
-func (i *Uint) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
-func (i *Uint) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
-func (i *Uint) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
+func (i *Uint) reverse() (Value, error) { return nil, ErrUnsupported }
+
+func (i *Uint) leftshift(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw >> asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) rightshift(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw << asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) and(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw & asUint(v)
+	return &x, nil
+}
+
+func (i *Uint) or(v Value) (Value, error) {
+	if !isCompatible(i, v) {
+		return nil, ErrIncompatible
+	}
+	x := *i
+	x.Raw = x.Raw | asUint(v)
+	return &x, nil
+}
 
 type Real struct {
 	Meta
