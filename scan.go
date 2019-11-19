@@ -5,13 +5,14 @@ import (
 	"io"
 	"io/ioutil"
 	"sort"
+	"unicode/utf8"
 )
 
 type Scanner struct {
 	buffer []byte
 	pos    int
 	next   int
-	char   byte
+	char   rune
 
 	line   int
 	column int
@@ -32,7 +33,7 @@ func (s *Scanner) Reset(r io.Reader) error {
 		s.buffer = bytes.ReplaceAll(buf, []byte("\r\n"), []byte("\n"))
 		s.line = 1
 		s.column = 0
-		s.readByte()
+		s.readRune()
 	}
 	return err
 }
@@ -53,7 +54,7 @@ func (s *Scanner) Scan() Token {
 
 	switch {
 	case s.char == dollar:
-		s.readByte()
+		s.readRune()
 		if tok = s.Scan(); tok.Type != Ident {
 			tok.Type = Illegal
 		} else {
@@ -75,44 +76,63 @@ func (s *Scanner) Scan() Token {
 		tok.Type = rune(s.char)
 	}
 
-	s.readByte()
+	s.readRune()
 
 	return tok
 }
 
-func (s *Scanner) readByte() {
+func (s *Scanner) readRune() {
 	if s.next >= len(s.buffer) {
-		s.char = 0
+		s.char = EOF
 		return
 	}
-	if char := s.buffer[s.pos]; char == newline {
-		s.seen = s.column
-		s.line++
-		s.column = 0
+	r, n := utf8.DecodeRune(s.buffer[s.next:])
+	if r == utf8.RuneError {
+		if n == 0 {
+			s.char = EOF
+		} else {
+			s.char = Illegal
+		}
+		s.next = len(s.buffer)
 	}
-	s.char = s.buffer[s.next]
-	s.pos = s.next
-	s.next++
-
-	s.column++
+	s.char, s.pos, s.next = r, s.next, s.next+n
+	if s.char == newline {
+		s.line++
+		s.seen, s.column = s.column, 0
+	} else {
+		s.column++
+	}
 }
 
-func (s *Scanner) unreadByte() {
-	s.next = s.pos
-	s.pos--
-	if char := s.buffer[s.pos]; char == newline {
+func (s *Scanner) unreadRune() {
+	if s.next <= 0 || s.char == 0 {
+		return
+	}
+
+	if s.char == newline {
 		s.line--
 		s.column = s.seen
 	} else {
 		s.column--
 	}
+
+	s.next, s.pos = s.pos, s.pos-utf8.RuneLen(s.char)
+	s.char, _ = utf8.DecodeRune(s.buffer[s.pos:])
 }
 
-func (s *Scanner) peekByte() byte {
+func (s *Scanner) peekRune() rune {
 	if s.next >= len(s.buffer) {
-		return 0
+		return EOF
 	}
-	return s.buffer[s.next]
+	r, n := utf8.DecodeRune(s.buffer[s.next:])
+	if r == utf8.RuneError {
+		if n == 0 {
+			r = EOF
+		} else {
+			r = Illegal
+		}
+	}
+	return r
 }
 
 func (s *Scanner) scanNumber(tok *Token) {
@@ -121,14 +141,14 @@ func (s *Scanner) scanNumber(tok *Token) {
 	var (
 		pos    = s.pos
 		nodot  bool
-		accept func(byte) bool
+		accept func(rune) bool
 	)
 
 	if s.char == '0' {
-		switch peek := s.peekByte(); peek {
+		switch peek := s.peekRune(); peek {
 		case 'x', 'X':
-			s.readByte()
-			s.readByte()
+			s.readRune()
+			s.readRune()
 
 			accept = isHexa
 			nodot = true
@@ -143,13 +163,13 @@ func (s *Scanner) scanNumber(tok *Token) {
 	}
 
 	for accept(s.char) {
-		s.readByte()
+		s.readRune()
 	}
 	switch {
 	case s.char == dot && !nodot:
-		s.readByte()
+		s.readRune()
 		for accept(s.char) {
-			s.readByte()
+			s.readRune()
 		}
 		tok.Type = Float
 	case s.char == dot && nodot:
@@ -159,15 +179,15 @@ func (s *Scanner) scanNumber(tok *Token) {
 	}
 
 	tok.Literal = string(s.buffer[pos:s.pos])
-	s.unreadByte()
+	s.unreadRune()
 }
 
 func (s *Scanner) scanText(tok *Token) {
-	s.readByte()
+	s.readRune()
 
 	pos := s.pos
 	for s.char != quote {
-		s.readByte()
+		s.readRune()
 	}
 	tok.Type = Text
 	tok.Literal = string(s.buffer[pos:s.pos])
@@ -176,13 +196,13 @@ func (s *Scanner) scanText(tok *Token) {
 func (s *Scanner) scanIdent(tok *Token) {
 	pos := s.pos
 	for isIdent(s.char) && s.char != 0 {
-		s.readByte()
+		s.readRune()
 	}
 
 	tok.Literal = string(s.buffer[pos:s.pos])
 	tok.Type = Ident
 
-	s.unreadByte()
+	s.unreadRune()
 
 	if tok.Literal == kwTrue || tok.Literal == kwFalse {
 		tok.Type = Bool
@@ -196,7 +216,7 @@ func (s *Scanner) scanIdent(tok *Token) {
 }
 
 func (s *Scanner) scanOperator(tok *Token) {
-	switch peek := s.peekByte(); {
+	switch peek := s.peekRune(); {
 	case s.char == add:
 		tok.Type = Add
 	case s.char == mul:
@@ -208,44 +228,44 @@ func (s *Scanner) scanOperator(tok *Token) {
 	case s.char == equal:
 		tok.Type = Assign
 		if peek == s.char {
-			s.readByte()
+			s.readRune()
 			tok.Type = Equal
 		}
 	case s.char == langle:
 		tok.Type = Lesser
 		if peek == equal {
-			s.readByte()
+			s.readRune()
 			tok.Type = LessEq
 		}
 		if peek == langle {
-			s.readByte()
+			s.readRune()
 			tok.Type = ShiftLeft
 		}
 	case s.char == rangle:
 		tok.Type = Greater
 		if peek == equal {
-			s.readByte()
+			s.readRune()
 			tok.Type = GreatEq
 		}
 		if peek == rangle {
-			s.readByte()
+			s.readRune()
 			tok.Type = ShiftRight
 		}
 	case s.char == bang:
-		if peek := s.peekByte(); peek != equal {
+		if peek := s.peekRune(); peek != equal {
 			tok.Type = Not
 		} else {
 			tok.Type = NotEq
-			s.readByte()
+			s.readRune()
 		}
 	case s.char == ampersand:
-		s.readByte()
+		s.readRune()
 		tok.Type = And
 		if s.char != ampersand {
 			tok.Type = BitAnd
 		}
 	case s.char == pipe:
-		s.readByte()
+		s.readRune()
 		tok.Type = Or
 		if s.char != pipe {
 			tok.Type = BitOr
@@ -256,12 +276,12 @@ func (s *Scanner) scanOperator(tok *Token) {
 }
 
 func (s *Scanner) scanComment(tok *Token) {
-	s.readByte()
+	s.readRune()
 	s.skipBlank()
 
 	pos := s.pos
 	for s.char != newline {
-		s.readByte()
+		s.readRune()
 	}
 
 	tok.Literal = string(s.buffer[pos:s.pos])
@@ -270,43 +290,43 @@ func (s *Scanner) scanComment(tok *Token) {
 
 func (s *Scanner) skipNewline() {
 	for s.char == newline {
-		s.readByte()
+		s.readRune()
 	}
 	if s.char != 0 {
-		s.unreadByte()
+		s.unreadRune()
 	}
 }
 
 func (s *Scanner) skipBlank() {
 	for isBlank(s.char) {
-		s.readByte()
+		s.readRune()
 	}
 }
 
-func isIdent(b byte) bool {
+func isIdent(b rune) bool {
 	return isLetter(b) || isDigit(b) || b == underscore
 }
 
-func isLetter(b byte) bool {
+func isLetter(b rune) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
-func isDigit(b byte) bool {
+func isDigit(b rune) bool {
 	return b >= '0' && b <= '9'
 }
 
-func isHexa(b byte) bool {
+func isHexa(b rune) bool {
 	return isDigit(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
 }
 
-func isOp(b byte) bool {
+func isOp(b rune) bool {
 	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe || b == add || b == div || b == mul || b == minus || b == question
 }
 
-func isComment(b byte) bool {
+func isComment(b rune) bool {
 	return b == pound
 }
 
-func isBlank(b byte) bool {
+func isBlank(b rune) bool {
 	return b == space || b == tab
 }
