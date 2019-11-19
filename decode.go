@@ -636,8 +636,8 @@ func (root *state) evalPoly(cs []Constant, v Value) (Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		mul, _ := strconv.ParseFloat(c.id.Literal, 64)
-		pow := asReal(pv) // strconv.ParseFloat(c.value.Literal, 64)
+		pow, _ := strconv.ParseFloat(c.id.Literal, 64)
+		mul := asReal(pv) // strconv.ParseFloat(c.value.Literal, 64)
 
 		eng += mul * math.Pow(raw, pow)
 	}
