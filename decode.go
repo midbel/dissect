@@ -269,13 +269,13 @@ func (root *state) decodeEcho(e Echo) error {
 				return err
 			}
 			switch n.attr.Literal {
-			case "eng":
+			case methEng:
 				dat = appendEng(dat, v, false)
-			case "raw":
+			case methRaw:
 				dat = appendRaw(dat, v, false)
-			case "id":
+			case methId:
 				dat = []byte(v.String())
-			case "pos":
+			case methPos:
 				dat = strconv.AppendInt(dat, int64(v.Offset()), 10)
 			default:
 				return fmt.Errorf("unknown attribute %s", n.attr.Literal)

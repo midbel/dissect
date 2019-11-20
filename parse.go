@@ -160,9 +160,6 @@ func (p *Parser) parseEcho() (Node, error) {
 				attr: p.curr,
 			}
 		} else {
-			// if curr.Type == Text {
-			//
-			// }
 			node = curr
 		}
 		e.nodes = append(e.nodes, node)

@@ -104,6 +104,8 @@ const (
 	methEng   = "eng"
 	methBoth  = "both"
 	methDebug = "debug"
+	methId    = "id"
+	methPos   = "pos"
 )
 
 const (
