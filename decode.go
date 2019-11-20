@@ -30,6 +30,7 @@ type state struct {
 
 	buffer []byte
 	Pos    int
+	Loop   int
 
 	currentBlock string
 	currentFile  string
@@ -62,6 +63,7 @@ func (root *state) Run(dat Block, r io.Reader) error {
 			}
 			return err
 		}
+		root.Loop++
 		root.Values = root.Values[:0]
 		root.buffer = root.buffer[root.Pos/numbit:]
 		root.Pos = 0
@@ -91,6 +93,11 @@ func (root *state) ResolveInternal(str string) (Value, error) {
 		err  error
 	)
 	switch str {
+	case "Loop":
+		val = &Int{
+			Meta: meta,
+			Raw:  int64(root.Loop),
+		}
 	case "Time":
 		val = &Int{
 			Meta: meta,
