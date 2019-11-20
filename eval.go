@@ -132,7 +132,10 @@ func evalLiteral(i Literal, _ *state) (Value, error) {
 }
 
 func evalIdentifier(i Identifier, root *state) (Value, error) {
-	return root.ResolveValue(i.id.Literal)
+	if i.id.Type != Internal {
+		return root.ResolveValue(i.id.Literal)
+	}
+	return root.ResolveInternal(i.id.Literal)
 }
 
 func evalArithmetic(b Binary, root *state) (Value, error) {
