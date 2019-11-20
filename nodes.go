@@ -271,56 +271,56 @@ func (b Break) String() string {
 	return fmt.Sprintf("break(%s)", b.expr)
 }
 
-type ExitStmt struct {
+type Exit struct {
 	pos  Position
 	code Token
 }
 
-func (e ExitStmt) String() string {
+func (e Exit) String() string {
 	return "exit"
 }
 
-func (e ExitStmt) Pos() Position {
+func (e Exit) Pos() Position {
 	return e.pos
 }
 
-type SeekStmt struct {
+type Seek struct {
 	pos      Position
 	offset   Expression
 	absolute bool
 }
 
-func (s SeekStmt) String() string {
+func (s Seek) String() string {
 	return "seek"
 }
 
-func (s SeekStmt) Pos() Position {
+func (s Seek) Pos() Position {
 	return s.pos
 }
 
-type DelStmt struct {
+type Del struct {
 	pos   Position
 	nodes []Node
 }
 
-func (d DelStmt) String() string {
+func (d Del) String() string {
 	return "delete"
 }
 
-func (d DelStmt) Pos() Position {
+func (d Del) Pos() Position {
 	return d.pos
 }
 
-type LetStmt struct {
+type Let struct {
 	id   Token
 	expr Expression
 }
 
-func (t LetStmt) String() string {
+func (t Let) String() string {
 	return t.id.Literal
 }
 
-func (t LetStmt) Pos() Position {
+func (t Let) Pos() Position {
 	return t.id.Pos()
 }
 

@@ -159,16 +159,20 @@ func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case Break:
-			root.decodeBreak(n)
+			return root.decodeBreak(n)
 		case Continue:
-			root.decodeContinue(n)
+			return root.decodeContinue(n)
 		case Echo:
-			root.decodeEcho(n)
+			if err := root.decodeEcho(n); err != nil {
+				return err
+			}
 		case Print:
-			root.decodePrint(n)
-		case ExitStmt:
+			if err := root.decodePrint(n); err != nil {
+				return err
+			}
+		case Exit:
 			return root.decodeExit(n)
-		case LetStmt:
+		case Let:
 			val, err := root.decodeLet(n)
 			if err != nil {
 				return err
@@ -176,7 +180,7 @@ func (root *state) decodeBlock(data Block) error {
 			if val != nil {
 				root.Values = append(root.Values, val)
 			}
-		case DelStmt:
+		case Del:
 			for _, n := range n.nodes {
 				r, ok := n.(Reference)
 				if !ok {
@@ -184,7 +188,7 @@ func (root *state) decodeBlock(data Block) error {
 				}
 				root.DeleteValue(r.id.Literal)
 			}
-		case SeekStmt:
+		case Seek:
 			if err := root.decodeSeek(n); err != nil {
 				return err
 			}
@@ -461,11 +465,11 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 	return raw, nil
 }
 
-func (root *state) decodeLet(e LetStmt) (Value, error) {
+func (root *state) decodeLet(e Let) (Value, error) {
 	return eval(e.expr, root)
 }
 
-func (root *state) decodeExit(e ExitStmt) error {
+func (root *state) decodeExit(e Exit) error {
 	var code int64
 	switch e.code.Type {
 	case Integer:
@@ -561,7 +565,7 @@ func (root *state) decodeBreak(n Break) error {
 	return err
 }
 
-func (root *state) decodeSeek(n SeekStmt) error {
+func (root *state) decodeSeek(n Seek) error {
 	v, err := eval(n.offset, root)
 	if err != nil {
 		return err

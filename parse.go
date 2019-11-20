@@ -413,7 +413,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 }
 
 func (p *Parser) parseSeek() (Node, error) {
-	k := SeekStmt{pos: p.curr.Pos()}
+	k := Seek{pos: p.curr.Pos()}
 	p.nextToken()
 	if p.curr.Type == Keyword {
 		if p.curr.Literal != kwAt {
@@ -438,7 +438,7 @@ func (p *Parser) parseSeek() (Node, error) {
 }
 
 func (p *Parser) parseLet() (Node, error) {
-	n := LetStmt{id: p.peek}
+	n := Let{id: p.peek}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -448,7 +448,7 @@ func (p *Parser) parseLet() (Node, error) {
 }
 
 func (p *Parser) parseDel() (Node, error) {
-	d := DelStmt{pos: p.curr.Pos()}
+	d := Del{pos: p.curr.Pos()}
 	for !p.isDone() {
 		p.nextToken()
 		if p.curr.Type == Newline {
@@ -614,7 +614,7 @@ func (p *Parser) parseInfix(left Expression) (Expression, error) {
 }
 
 func (p *Parser) parseExit() (Node, error) {
-	e := ExitStmt{pos: p.curr.Pos()}
+	e := Exit{pos: p.curr.Pos()}
 	p.nextToken()
 	if p.curr.Type != Integer {
 		return nil, fmt.Errorf("exit: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
@@ -1142,11 +1142,11 @@ func merge(dat, root Block) (Node, error) {
 		switch n := n.(type) {
 		case Parameter:
 			nodes = append(nodes, n)
-		case LetStmt:
+		case Let:
 			nodes = append(nodes, n)
-		case DelStmt:
+		case Del:
 			nodes = append(nodes, n)
-		case SeekStmt:
+		case Seek:
 			nodes = append(nodes, n)
 		case Reference:
 			p, err := root.ResolveParameter(n.id.Literal)

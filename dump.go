@@ -55,17 +55,17 @@ func dumpNode(n Node, level int) error {
 			dumpNode(n, level+1)
 		}
 		fmt.Printf("%s)", indent)
-	case ExitStmt:
+	case Exit:
 		fmt.Printf("%sexit(code=%s, pos=%s)", indent, n.code.Literal, n.Pos())
-	case LetStmt:
+	case Let:
 		fmt.Printf("%slet(name=%s, predicate=%s, pos=%s)", indent, n.id.Literal, n.expr, n.Pos())
-	case DelStmt:
+	case Del:
 		fmt.Printf("%sdel(pos=%s) (\n", indent, n.Pos())
 		for _, n := range n.nodes {
 			dumpNode(n, level+1)
 		}
 		fmt.Printf("%s)", indent)
-	case SeekStmt:
+	case Seek:
 		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset, n.Pos())
 	case Match:
 		fmt.Printf("%smatch(name=%s, pos=%s) (\n", indent, n.id.Literal, n.Pos())
