@@ -59,6 +59,7 @@ func (s *Scanner) Scan() Token {
 			tok.Type = Illegal
 		} else {
 			tok.Type = Internal
+			s.unreadRune()
 		}
 	case isLetter(s.char):
 		s.scanIdent(&tok)
