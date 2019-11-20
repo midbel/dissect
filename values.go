@@ -211,7 +211,7 @@ func (i *Int) leftshift(v Value) (Value, error) {
 		return nil, ErrIncompatible
 	}
 	x := *i
-	x.Raw = x.Raw >> asInt(v)
+	x.Raw = x.Raw << asInt(v)
 	return &x, nil
 }
 
@@ -220,7 +220,7 @@ func (i *Int) rightshift(v Value) (Value, error) {
 		return nil, ErrIncompatible
 	}
 	x := *i
-	x.Raw = x.Raw << asInt(v)
+	x.Raw = x.Raw >> asInt(v)
 	return &x, nil
 }
 
@@ -309,7 +309,7 @@ func (i *Uint) leftshift(v Value) (Value, error) {
 		return nil, ErrIncompatible
 	}
 	x := *i
-	x.Raw = x.Raw >> asUint(v)
+	x.Raw = x.Raw << asUint(v)
 	return &x, nil
 }
 
@@ -318,7 +318,7 @@ func (i *Uint) rightshift(v Value) (Value, error) {
 		return nil, ErrIncompatible
 	}
 	x := *i
-	x.Raw = x.Raw << asUint(v)
+	x.Raw = x.Raw >> asUint(v)
 	return &x, nil
 }
 
