@@ -116,7 +116,7 @@ func (p *Parser) Parse() (Node, error) {
 		}
 		parse, ok := p.kwords[p.curr.Literal]
 		if !ok {
-			return nil, fmt.Errorf("parse: unknown keyword: %s (ùs)", p.curr.Literal, p.curr.Pos())
+			return nil, fmt.Errorf("parse: unknown keyword: %s (%s)", p.curr.Literal, p.curr.Pos())
 		}
 		p.pushBlock(p.curr.Literal)
 		n, err := parse()
@@ -129,6 +129,14 @@ func (p *Parser) Parse() (Node, error) {
 		}
 	}
 	return root, nil
+}
+
+func (p *Parser) isClosed() error {
+	if p.curr.Type != rparen {
+		return fmt.Errorf("parse: expected ), got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	return nil
 }
 
 func (p *Parser) parseEcho() (Node, error) {
@@ -367,8 +375,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 			ns = append(ns, node)
 		}
 	}
-	p.nextToken()
-	return ns, nil
+	return ns, p.isClosed()
 }
 
 func (p *Parser) parseRepeat() (Node, error) {
@@ -882,8 +889,7 @@ func (p *Parser) parseDeclare() (Node, error) {
 		}
 		b.nodes = append(b.nodes, n)
 	}
-	p.nextToken()
-	return b, nil
+	return b, p.isClosed()
 }
 
 func (p *Parser) parseAssignment() (Node, error) {
@@ -929,8 +935,7 @@ func (p *Parser) parseDefine() (Node, error) {
 		}
 		b.nodes = append(b.nodes, n.(Constant))
 	}
-	p.nextToken()
-	return b, nil
+	return b, p.isClosed()
 }
 
 func (p *Parser) parseImport() error {
@@ -961,7 +966,6 @@ func (p *Parser) parseImport() error {
 			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
 	}
-	p.nextToken()
 	for _, f := range files {
 		r, err := os.Open(f)
 		if err != nil {
@@ -973,7 +977,7 @@ func (p *Parser) parseImport() error {
 			return err
 		}
 	}
-	return nil
+	return p.isClosed()
 }
 
 func (p *Parser) parseFile(file string) ([]Node, error) {
@@ -1031,8 +1035,7 @@ func (p *Parser) parsePair() (Node, error) {
 		}
 		a.nodes = append(a.nodes, n.(Constant))
 	}
-	p.nextToken()
-	return a, nil
+	return a, p.isClosed()
 }
 
 func (p *Parser) isDone() bool {
@@ -1097,8 +1100,16 @@ func (p *Parser) nextToken() {
 
 func (p *Parser) pushFrame(r io.Reader) error {
 	s, err := Scan(r)
+
+	file := "<input>"
+	if n, ok := r.(interface{ Name() string} ); ok {
+		file = n.Name()
+	}
 	if err == nil {
-		f := &frame{Scanner: s}
+		f := &frame{
+			file:    file,
+			Scanner: s,
+		}
 		f.Scan()
 		p.frames = append(p.frames, f)
 	}
@@ -1114,6 +1125,7 @@ func (p *Parser) popFrame() {
 }
 
 type frame struct {
+	file string
 	curr Token
 	*Scanner
 }
