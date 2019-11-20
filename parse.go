@@ -132,20 +132,44 @@ func (p *Parser) Parse() (Node, error) {
 }
 
 func (p *Parser) parseEcho() (Node, error) {
-	e := Echo{pos: p.curr.Pos()}
-	p.nextToken()
-	if p.curr.Type == Text {
-		e.pattern = p.curr
-		p.nextToken()
+	e := Echo{
+		pos:  p.curr.Pos(),
+		file: Token{Literal: "-"},
 	}
 	p.nextToken()
 	for !p.isDone() {
-		if p.curr.Type == Newline {
+		if p.curr.Type == Newline || p.curr.Type == Greater {
 			break
 		}
-		e.values = append(e.values, p.curr)
+		curr := p.curr
+		var node Node
+		if p.peek.Type == dot {
+			p.nextToken()
+			p.nextToken()
+
+			node = Member{
+				ref:  curr,
+				attr: p.curr,
+			}
+		} else {
+			if curr.Type == Text {
+				
+			}
+			node = curr
+		}
+		e.nodes = append(e.nodes, node)
 		p.nextToken()
 	}
+
+	if p.curr.Type == Greater {
+		p.nextToken()
+		if !p.curr.isIdent() {
+			return nil, fmt.Errorf("echo: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		e.file = p.curr
+		p.nextToken()
+	}
+
 	p.nextToken()
 	return e, nil
 }
@@ -559,7 +583,7 @@ func (p *Parser) parsePrefix() (Expression, error) {
 		expr = n
 	case Integer, Float, Bool, Text:
 		expr = Literal{id: p.curr}
-	case Ident:
+	case Ident, Internal:
 		expr = Identifier{id: p.curr}
 	default:
 		return nil, fmt.Errorf("expression: unexpected token type %s (%s)", TokenString(p.curr), p.curr.Pos())
@@ -864,54 +888,22 @@ func (p *Parser) parseDeclare() (Node, error) {
 
 func (p *Parser) parseAssignment() (Node, error) {
 	node := Constant{
-		id:   p.curr,
-		kind: kindInt,
+		id: p.curr,
 	}
-
 	p.nextToken()
-	if p.curr.Type == colon {
-		if id := p.currentBlock(); id == kwEnum || id == kwPoly || id == kwPoint {
-			return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		p.nextToken()
-		if p.curr.Type != Keyword {
-			return nil, fmt.Errorf("assign: expected keyword, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		switch lit := p.curr.Literal; lit {
-		case kwInt:
-		case kwUint:
-			node.kind = kindUint
-		case kwFloat:
-			node.kind = kindFloat
-		default:
-			return nil, fmt.Errorf("assign: unexpected type %s (%s)", lit, p.curr.Pos())
-		}
-		p.nextToken()
-	}
 	if p.curr.Type != Assign {
-		return nil, fmt.Errorf("assign: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, fmt.Errorf("assignment: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
 	}
-	node.value = expr
-	// p.nextToken()
-	// switch p.curr.Type {
-	// case Integer, Float, Text, Ident, Bool:
-	// 	node.value = p.curr
-	// default:
-	// 	return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-	// }
-	// p.nextToken()
-	// switch p.curr.Type {
-	// case Comment:
-	// 	p.skipComment()
-	// case Newline:
-	// 	p.nextToken()
-	// default:
-	// 	return nil, fmt.Errorf("assign: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-	// }
+	switch e := expr.(type) {
+	case Unary, Literal:
+		node.value = expr
+	default:
+		return nil, fmt.Errorf("assignment: expected literal or prefix expression, got %T (%s)", e, node.Pos())
+	}
 	return node, nil
 }
 

@@ -2,13 +2,16 @@ package dissect
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -81,6 +84,49 @@ func (root *state) Size() int {
 	return len(root.buffer) * numbit
 }
 
+func (root *state) ResolveInternal(str string) (Value, error) {
+	var (
+		meta = Meta{Id: str}
+		val  Value
+		err  error
+	)
+	switch str {
+	case "Time":
+		val = &Int{
+			Meta: meta,
+			Raw:  time.Now().Unix(),
+		}
+	case "Num":
+		val = &Int{
+			Meta: meta,
+			Raw:  int64(len(root.Values)),
+		}
+	case "Pos":
+		val = &Int{
+			Meta: meta,
+			Raw:  int64(root.Pos),
+		}
+	case "Size":
+		val = &Int{
+			Meta: meta,
+			Raw:  int64(root.Size()),
+		}
+	case "File":
+		val = &String{
+			Meta: meta,
+			Raw:  root.currentFile,
+		}
+	case "Block":
+		val = &String{
+			Meta: meta,
+			Raw:  root.currentBlock,
+		}
+	default:
+		err = fmt.Errorf("%s: unknown internal value", str)
+	}
+	return val, err
+}
+
 func (root *state) ResolveValue(n string) (Value, error) {
 	for i := len(root.Values) - 1; i >= 0; i-- {
 		v := root.Values[i]
@@ -106,13 +152,13 @@ func (root *state) decodeBlock(data Block) error {
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case Break:
-			return root.decodeBreak(n)
+			root.decodeBreak(n)
 		case Continue:
-			return root.decodeContinue(n)
+			root.decodeContinue(n)
 		case Echo:
-			return root.decodeEcho(n)
+			root.decodeEcho(n)
 		case Print:
-			return root.decodePrint(n)
+			root.decodePrint(n)
 		case ExitStmt:
 			return root.decodeExit(n)
 		case LetStmt:
@@ -176,24 +222,77 @@ func (root *state) decodeBlock(data Block) error {
 	return nil
 }
 
+func (root *state) openFile(file string, echo bool) (io.Writer, error) {
+	if w, ok := root.files[file]; ok {
+		return w, nil
+	}
+	if file == "" || file == "-" {
+		if echo {
+			return os.Stderr, nil
+		}
+		return os.Stdout, nil
+	}
+	if file == "/dev/null" {
+		return ioutil.Discard, nil
+	}
+	w, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+	root.files[file] = w
+	return w, nil
+}
+
 func (root *state) decodeEcho(e Echo) error {
+	w, err := root.openFile(e.file.Literal, true)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	for _, n := range e.nodes {
+		dat := make([]byte, 0, 64)
+		switch n := n.(type) {
+		case Member:
+			v, err := root.ResolveValue(n.ref.Literal)
+			if err != nil {
+				return err
+			}
+			switch n.attr.Literal {
+			case "eng":
+				dat = appendEng(dat, v, false)
+			case "raw":
+				dat = appendRaw(dat, v, false)
+			case "id":
+				dat = []byte(v.String())
+			case "pos":
+				dat = strconv.AppendInt(dat, int64(v.Offset()), 10)
+			default:
+				return fmt.Errorf("unknown attribute %s", n.attr.Literal)
+			}
+		case Token:
+			if n.Type == Internal {
+				i, err := root.ResolveInternal(n.Literal)
+				if err != nil {
+					return err
+				}
+				dat = appendRaw(dat, i, false)
+			} else {
+				dat = []byte(n.Literal)
+			}
+		default:
+			continue
+		}
+		buf.Write(dat)
+	}
+	buf.WriteString("\r\n")
+	io.Copy(w, &buf)
 	return nil
 }
 
 func (root *state) decodePrint(p Print) error {
-	var w io.Writer
-	if f, ok := root.files[p.file.Literal]; ok {
-		w = f
-	} else {
-		if file := p.file.Literal; file == "" || file == "-" {
-			w = os.Stdout
-		} else {
-			f, err := os.Create(p.file.Literal)
-			if err != nil {
-				return err
-			}
-			root.files[file], w = f, f
-		}
+	w, err := root.openFile(p.file.Literal, false)
+	if err != nil {
+		return err
 	}
 	k := struct {
 		Format string

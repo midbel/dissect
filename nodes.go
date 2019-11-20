@@ -198,7 +198,8 @@ func (t Ternary) exprNode() Node {
 type Echo struct {
 	pos     Position
 	pattern Token
-	values  []Token
+	file    Token
+	nodes   []Node
 }
 
 func (e Echo) Pos() Position {
@@ -206,7 +207,20 @@ func (e Echo) Pos() Position {
 }
 
 func (e Echo) String() string {
-	return "echo"
+	return "echo" //fmt.Sprintf("echo(%v)", e.nodes)
+}
+
+type Member struct {
+	ref  Token
+	attr Token
+}
+
+func (m Member) Pos() Position {
+	return m.ref.Pos()
+}
+
+func (m Member) String() string {
+	return fmt.Sprintf("%s.%s", m.ref.Literal, m.attr.Literal)
 }
 
 type Print struct {
@@ -413,7 +427,6 @@ func (i Include) Pos() Position {
 type Constant struct {
 	id    Token
 	value Expression // Token
-	kind  Kind
 }
 
 func (c Constant) String() string {
