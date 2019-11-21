@@ -468,7 +468,7 @@ func (s *String) or(_ Value) (Value, error)         { return nil, ErrUnsupported
 
 func concatValues(left, right Value) (Value, error) {
 	ls, rs := asString(left), asString(right)
-	s := String{Raw: ls+rs}
+	s := String{Raw: ls + rs}
 	return &s, nil
 }
 
