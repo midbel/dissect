@@ -64,9 +64,7 @@ func (root *state) Run(dat Block, r io.Reader) error {
 			return err
 		}
 		root.Loop++
-		root.Values = root.Values[:0]
-		root.buffer = root.buffer[:0]
-		root.Pos = 0
+		root.reset()
 	}
 	return nil
 }
@@ -79,6 +77,18 @@ func (root *state) Reset(r io.Reader) {
 	}
 	root.reader = bufio.NewReader(r)
 	root.buffer = root.buffer[:0]
+	root.Pos = 0
+	root.Loop = 0
+}
+
+func (root *state) reset() {
+	root.Values = root.Values[:0]
+	var cut int
+	if offset := root.Pos/numbit; offset < len(root.buffer) {
+		cut = offset
+	}
+	root.buffer = root.buffer[:cut]
+	// root.buffer = root.buffer[root.Pos/numbit:]
 	root.Pos = 0
 }
 
@@ -124,9 +134,13 @@ func (root *state) ResolveInternal(str string) (Value, error) {
 			Raw:  root.currentFile,
 		}
 	case "Block":
+		block := "block"
+		if root.currentBlock != "" {
+			block = root.currentBlock
+		}
 		val = &String{
 			Meta: meta,
-			Raw:  root.currentBlock,
+			Raw:  block,
 		}
 	default:
 		err = fmt.Errorf("%s: unknown internal value", str)
@@ -301,7 +315,14 @@ func (root *state) decodeEcho(e Echo) error {
 }
 
 func (root *state) decodePrint(p Print) error {
-	w, err := root.openFile(p.file.Literal, false)
+	file := p.file.Literal
+	if p.file.Type == Ident {
+		v, err := root.ResolveValue(file)
+		if err == nil {
+			file = asString(v)
+		}
+	}
+	w, err := root.openFile(file, false)
 	if err != nil {
 		return err
 	}
