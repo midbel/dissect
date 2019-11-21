@@ -61,7 +61,7 @@ func (s *Scanner) Scan() Token {
 			tok.Type = Internal
 			s.unreadRune()
 		}
-	case isLetter(s.char):
+	case isLetter(s.char) || (s.char == underscore && isLetter(s.peekRune())):
 		s.scanIdent(&tok)
 	case isDigit(s.char): // || s.char == minus:
 		s.scanNumber(&tok)
