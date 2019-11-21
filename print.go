@@ -63,6 +63,9 @@ func sexpPrintRaw(w io.Writer, values []Value) error {
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
@@ -81,6 +84,9 @@ func sexpPrintEng(w io.Writer, values []Value) error {
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
@@ -99,6 +105,9 @@ func sexpPrintBoth(w io.Writer, values []Value) error {
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
@@ -159,6 +168,9 @@ func csvPrintRaw(w io.Writer, values []Value) error {
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
@@ -177,6 +189,9 @@ func csvPrintEng(w io.Writer, values []Value) error {
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
@@ -195,6 +210,9 @@ func csvPrintBoth(w io.Writer, values []Value) error {
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
+		if v.skip() {
+			continue
+		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
