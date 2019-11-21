@@ -16,6 +16,12 @@ var printers = map[struct{ Format, Method string }]printFunc{
 	{Format: fmtCSV, Method: methDebug}:   csvPrintDebug,
 	{Format: fmtTuple, Method: methDebug}: sexpPrintDebug,
 	{Format: fmtSexp, Method: methDebug}:  sexpPrintDebug,
+	{Format: fmtTuple, Method: methRaw}:   sexpPrintRaw,
+	{Format: fmtSexp, Method: methRaw}:    sexpPrintRaw,
+	{Format: fmtTuple, Method: methEng}:   sexpPrintEng,
+	{Format: fmtSexp, Method: methEng}:    sexpPrintEng,
+	{Format: fmtTuple, Method: methBoth}:  sexpPrintBoth,
+	{Format: fmtSexp, Method: methBoth}:   sexpPrintBoth,
 }
 
 func sexpPrintDebug(w io.Writer, values []Value) error {
@@ -45,10 +51,67 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 		buf.WriteRune(rparen)
 	}
 	buf.WriteRune(rparen)
-	if _, err := io.Copy(w, &buf); err != nil {
-		return err
+
+	_, err := io.Copy(w, &buf)
+	return err
+}
+
+func sexpPrintRaw(w io.Writer, values []Value) error {
+	var (
+		buf bytes.Buffer
+		dat = make([]byte, 0, 32)
+	)
+	buf.WriteRune(lparen)
+	for i, v := range values {
+		if i > 0 {
+			buf.WriteRune(space)
+		}
+		buf.Write(appendRaw(dat, v, true))
 	}
-	return nil
+	buf.WriteRune(rparen)
+
+	_, err := io.Copy(w, &buf)
+	return err
+}
+
+func sexpPrintEng(w io.Writer, values []Value) error {
+	var (
+		buf bytes.Buffer
+		dat = make([]byte, 0, 32)
+	)
+	buf.WriteRune(lparen)
+	for i, v := range values {
+		if i > 0 {
+			buf.WriteRune(space)
+		}
+		buf.Write(appendEng(dat, v, true))
+	}
+	buf.WriteRune(rparen)
+
+	_, err := io.Copy(w, &buf)
+	return err
+}
+
+func sexpPrintBoth(w io.Writer, values []Value) error {
+	var (
+		buf bytes.Buffer
+		dat = make([]byte, 0, 32)
+	)
+	buf.WriteRune(lparen)
+	for i, v := range values {
+		if i > 0 {
+			buf.WriteRune(space)
+		}
+		buf.WriteRune(lparen)
+		buf.Write(appendRaw(dat, v, true))
+		buf.WriteRune(space)
+		buf.Write(appendEng(dat, v, true))
+		buf.WriteRune(rparen)
+	}
+	buf.WriteRune(rparen)
+
+	_, err := io.Copy(w, &buf)
+	return err
 }
 
 func csvPrintDebug(w io.Writer, values []Value) error {

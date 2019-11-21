@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
 	"net"
+	"os"
 
 	"github.com/midbel/dissect"
 	"github.com/pkg/profile"
@@ -13,8 +13,8 @@ import (
 func main() {
 	var (
 		listen = flag.Bool("l", false, "listen")
-		mem = flag.Bool("mem", false, "mem profile")
-		cpu = flag.Bool("cpu", false, "cpu profile")
+		mem    = flag.Bool("mem", false, "mem profile")
+		cpu    = flag.Bool("cpu", false, "cpu profile")
 	)
 	flag.Parse()
 	if *mem {

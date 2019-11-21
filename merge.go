@@ -1,8 +1,8 @@
 package dissect
 
 import (
-  "fmt"
-  "strconv"
+	"fmt"
+	"strconv"
 )
 
 func merge(dat, root Block) (Node, error) {
