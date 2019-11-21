@@ -361,6 +361,27 @@ func (p *Parser) parseStatements() ([]Node, error) {
 			p.popBlock()
 		case Ident, Text:
 			node, err = p.parseField()
+		case lparen:
+			xs, err := p.parseStatements()
+			if err != nil {
+				return nil, err
+			}
+			var id Token
+			if p.curr.Type == Keyword {
+				if p.curr.Literal != kwAs {
+					return nil, fmt.Errorf("statement: expected as, got %s (%s)", p.curr, p.curr.Pos())
+				}
+				p.nextToken()
+				id = p.curr
+				p.nextToken()
+			} else {
+				id = Token{Literal: kwAno, pos: p.curr.Pos()}
+			}
+			b := Block{
+				id:    id,
+				nodes: xs,
+			}
+			ns = append(ns, b)
 		default:
 			err = fmt.Errorf("statement: unexpected token %s (%s)", p.curr, p.curr.Pos())
 		}
