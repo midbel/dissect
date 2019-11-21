@@ -35,6 +35,7 @@ type Value interface {
 	or(Value) (Value, error)
 
 	setId(string)
+	skip() bool
 }
 
 type Meta struct {
@@ -57,6 +58,10 @@ func (m *Meta) String() string {
 
 func (m *Meta) setId(s string) {
 	m.Id = s
+}
+
+func (m *Meta) skip() bool {
+	return len(m.Id) == 0 || m.Id[0] == underscore
 }
 
 type Null struct {
@@ -156,6 +161,9 @@ func (i *Int) Cmp(v Value) int {
 }
 
 func (i *Int) add(v Value) (Value, error) {
+	if v, ok := v.(*String); ok {
+		return concatValues(i, v)
+	}
 	if !isCompatible(i, v) {
 		return nil, ErrIncompatible
 	}
@@ -258,6 +266,9 @@ func (i *Uint) Cmp(v Value) int {
 }
 
 func (i *Uint) add(v Value) (Value, error) {
+	if v, ok := v.(*String); ok {
+		return concatValues(i, v)
+	}
 	if !isCompatible(i, v) {
 		return nil, ErrIncompatible
 	}
@@ -441,7 +452,10 @@ func (s *String) Cmp(v Value) int {
 	return strings.Compare(s.Raw, str.Raw)
 }
 
-func (s *String) add(v Value) (Value, error)        { return nil, ErrUnsupported }
+func (s *String) add(v Value) (Value, error) {
+	return concatValues(s, v)
+}
+
 func (s *String) subtract(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) multiply(v Value) (Value, error)   { return nil, ErrUnsupported }
 func (s *String) divide(v Value) (Value, error)     { return nil, ErrUnsupported }
@@ -451,6 +465,12 @@ func (s *String) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported
 func (s *String) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
 func (s *String) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
 func (s *String) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
+
+func concatValues(left, right Value) (Value, error) {
+	ls, rs := asString(left), asString(right)
+	s := String{Raw: ls+rs}
+	return &s, nil
+}
 
 func appendRaw(buf []byte, v Value, escape bool) []byte {
 	switch v := v.(type) {
