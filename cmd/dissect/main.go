@@ -7,11 +7,22 @@ import (
 	"net"
 
 	"github.com/midbel/dissect"
+	"github.com/pkg/profile"
 )
 
 func main() {
-	listen := flag.Bool("l", false, "listen")
+	var (
+		listen = flag.Bool("l", false, "listen")
+		mem = flag.Bool("mem", false, "mem profile")
+		cpu = flag.Bool("cpu", false, "cpu profile")
+	)
 	flag.Parse()
+	if *mem {
+		defer profile.Start(profile.MemProfile).Stop()
+	}
+	if *cpu {
+		defer profile.Start(profile.CPUProfile).Stop()
+	}
 
 	var err error
 	if *listen {

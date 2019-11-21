@@ -65,7 +65,7 @@ func (root *state) Run(dat Block, r io.Reader) error {
 		}
 		root.Loop++
 		root.Values = root.Values[:0]
-		root.buffer = root.buffer[root.Pos/numbit:]
+		root.buffer = root.buffer[:0]
 		root.Pos = 0
 	}
 	return nil
