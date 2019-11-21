@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -28,14 +29,13 @@ type state struct {
 	Values []Value
 	files  map[string]*os.File
 
+	reader *bufio.Reader
 	buffer []byte
 	Pos    int
 	Loop   int
 
-	currentBlock string
-	currentFile  string
-
-	reader *bufio.Reader
+	blocks      []string
+	currentFile string
 }
 
 func (root *state) Close() error {
@@ -82,14 +82,30 @@ func (root *state) Reset(r io.Reader) {
 }
 
 func (root *state) reset() {
-	root.Values = root.Values[:0]
-	var cut int
-	if offset := root.Pos/numbit; offset < len(root.buffer) {
-		cut = offset
+	if offset := root.Pos / numbit; offset < len(root.buffer) {
+		root.buffer = root.buffer[offset:]
+	} else {
+		root.buffer = root.buffer[:0]
 	}
-	root.buffer = root.buffer[:cut]
-	// root.buffer = root.buffer[root.Pos/numbit:]
+	root.Values = root.Values[:0]
 	root.Pos = 0
+}
+
+func (root *state) growBuffer(bits int) error {
+	pos := (root.Pos + bits) / numbit
+	if bits > 0 && pos < len(root.buffer) {
+		return nil
+	}
+
+	xs := make([]byte, 4096+(bits/numbit))
+	n, err := root.reader.Read(xs)
+	if n > 0 {
+		root.buffer = append(root.buffer, xs[:n]...)
+	}
+	if err != nil && err != io.EOF {
+		return err
+	}
+	return nil
 }
 
 func (root *state) Size() int {
@@ -135,12 +151,17 @@ func (root *state) ResolveInternal(str string) (Value, error) {
 		}
 	case "Block":
 		block := "block"
-		if root.currentBlock != "" {
-			block = root.currentBlock
+		if b := root.currentBlock(); b != "" {
+			block = b
 		}
 		val = &String{
 			Meta: meta,
 			Raw:  block,
+		}
+	case "Path":
+		val = &String{
+			Meta: meta,
+			Raw:  root.path(),
 		}
 	default:
 		err = fmt.Errorf("%s: unknown internal value", str)
@@ -169,7 +190,32 @@ func (root *state) DeleteValue(n string) {
 	}
 }
 
+func (root *state) currentBlock() string {
+	n := len(root.blocks)
+	if n == 0 {
+		return ""
+	}
+	return root.blocks[n-1]
+}
+
+func (root *state) path() string {
+	return "/" + strings.Join(root.blocks, "/")
+}
+
+func (root *state) pushBlock(b string) {
+	root.blocks = append(root.blocks, b)
+}
+
+func (root *state) popBlock() {
+	n := len(root.blocks)
+	if n > 0 {
+		root.blocks = root.blocks[:n-1]
+	}
+}
+
 func (root *state) decodeBlock(data Block) error {
+	root.pushBlock(data.id.Literal)
+	defer root.popBlock()
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case Break:
@@ -235,6 +281,10 @@ func (root *state) decodeBlock(data Block) error {
 			if val != nil {
 				root.Values = append(root.Values, val)
 			}
+		case Block:
+			if err := root.decodeBlock(n); err != nil {
+				return err
+			}
 		case Include:
 			err := root.decodeInclude(n)
 			if err != nil && !errors.Is(err, ErrSkip) {
@@ -248,9 +298,6 @@ func (root *state) decodeBlock(data Block) error {
 }
 
 func (root *state) openFile(file string, echo bool) (io.Writer, error) {
-	if w, ok := root.files[file]; ok {
-		return w, nil
-	}
 	if file == "" || file == "-" {
 		if echo {
 			return os.Stderr, nil
@@ -260,11 +307,22 @@ func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 	if file == "/dev/null" {
 		return ioutil.Discard, nil
 	}
+	w, ok := root.files[root.path()]
+	if ok && w.Name() == file {
+		return w, nil
+	}
+	if ok {
+		w.Close()
+		delete(root.files, root.path())
+	}
+	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil && !errors.Is(err, os.ErrExist) {
+		return nil, err
+	}
 	w, err := os.Create(file)
 	if err != nil {
 		return nil, err
 	}
-	root.files[file] = w
+	root.files[root.path()] = w
 	return w, nil
 }
 
@@ -338,23 +396,6 @@ func (root *state) decodePrint(p Print) error {
 		return fmt.Errorf("print: unsupported method %s for format %s", p.method, p.format)
 	}
 	return print(w, resolveValues(root, p.values))
-}
-
-func (root *state) growBuffer(bits int) error {
-	pos := (root.Pos + bits) / numbit
-	if bits > 0 && pos < len(root.buffer) {
-		return nil
-	}
-
-	xs := make([]byte, 4096+(bits/numbit))
-	n, err := root.reader.Read(xs)
-	if n > 0 {
-		root.buffer = append(root.buffer, xs[:n]...)
-	}
-	if err != nil && err != io.EOF {
-		return err
-	}
-	return nil
 }
 
 func (root *state) decodeParameter(p Parameter) (Value, error) {
