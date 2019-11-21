@@ -93,7 +93,7 @@ func (root *state) reset() {
 
 func (root *state) growBuffer(bits int) error {
 	pos := (root.Pos + bits) / numbit
-	if bits > 0 && pos < len(root.buffer) {
+	if n := len(root.buffer); n >= 4096 || (bits > 0 && pos < n) {
 		return nil
 	}
 

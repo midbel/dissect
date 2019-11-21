@@ -59,6 +59,8 @@ type Parser struct {
 	stmts  map[string]func() (Node, error)
 	kwords map[string]func() (Node, error)
 	blocks []string
+
+	inline int
 }
 
 func Parse(r io.Reader) (Node, error) {
@@ -375,7 +377,11 @@ func (p *Parser) parseStatements() ([]Node, error) {
 				id = p.curr
 				p.nextToken()
 			} else {
-				id = Token{Literal: kwAno, pos: p.curr.Pos()}
+				id = Token{
+					Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
+					pos: p.curr.Pos(),
+				}
+				p.inline++
 			}
 			b := Block{
 				id:    id,
@@ -410,10 +416,11 @@ func (p *Parser) parseRepeat() (Node, error) {
 		pos := p.curr.Pos()
 		if ns, e := p.parseStatements(); e == nil {
 			tok := Token{
-				Literal: kwInline,
+				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
 				Type:    Keyword,
 				pos:     pos,
 			}
+			p.inline++
 			r.node = Block{id: tok, nodes: ns}
 		} else {
 			err = e
@@ -711,10 +718,11 @@ func (p *Parser) parseMatch() (Node, error) {
 				return nil, err
 			}
 			tok := Token{
-				Literal: kwInline,
+				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
 				Type:    Keyword,
 				pos:     m.Pos(),
 			}
+			p.inline++
 			node = Block{
 				id:    tok,
 				nodes: ns,
@@ -753,10 +761,11 @@ func (p *Parser) parseInclude() (Node, error) {
 	case lparen:
 		if ns, e := p.parseStatements(); e == nil {
 			tok := Token{
-				Literal: kwInline,
+				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
 				Type:    Keyword,
 				pos:     i.Pos(),
 			}
+			p.inline++
 			i.node = Block{id: tok, nodes: ns}
 		} else {
 			err = e
