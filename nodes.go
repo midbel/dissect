@@ -21,6 +21,10 @@ func (t Literal) exprNode() Node {
 	return t
 }
 
+func (t Literal) isBoolean() bool {
+	return false
+}
+
 type Identifier struct {
 	id Token
 }
@@ -35,6 +39,10 @@ func (i Identifier) Pos() Position {
 
 func (i Identifier) exprNode() Node {
 	return i
+}
+
+func (i Identifier) isBoolean() bool {
+	return false
 }
 
 type Unary struct {
@@ -62,6 +70,10 @@ func (u Unary) exprNode() Node {
 	return u
 }
 
+func (u Unary) isBoolean() bool {
+	return u.operator == Not
+}
+
 type Assignment struct {
 	left  Identifier
 	right Expression
@@ -87,6 +99,10 @@ func (a Assignment) String() string {
 
 func (a Assignment) exprNode() Node {
 	return a
+}
+
+func (a Assignment) isBoolean() bool {
+	return false
 }
 
 type Binary struct {
@@ -162,6 +178,15 @@ func (b Binary) exprNode() Node {
 	return b
 }
 
+func (b Binary) isBoolean() bool {
+	switch b.operator {
+	case Equal, NotEq, Lesser, Greater, LessEq, GreatEq:
+		return true
+	default:
+		return false
+	}
+}
+
 type Ternary struct {
 	pos  Position
 	cond Expression
@@ -193,6 +218,10 @@ func (t Ternary) String() string {
 
 func (t Ternary) exprNode() Node {
 	return t
+}
+
+func (t Ternary) isBoolean() bool {
+	return true
 }
 
 type Echo struct {

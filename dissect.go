@@ -198,6 +198,7 @@ var keywords = []string{
 type Expression interface {
 	fmt.Stringer
 	exprNode() Node
+	isBoolean() bool
 }
 
 type Node interface {

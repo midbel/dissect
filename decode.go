@@ -24,6 +24,33 @@ var (
 
 const numbit = 8
 
+// type Option func(*Interpreter) error
+//
+// func WithStdout(std io.Writer) Option {
+// 	return func(i *Interpreter) error {
+// 		i.stdout = std
+// 	}
+// }
+//
+// func WithStderr(std io.Writer) Option {
+// 	return func(i *Interpreter) error {
+// 		i.stdout = std
+// 	}
+// }
+//
+// type Interpreter struct {
+// 	stdout io.Writer
+// 	stderr io.Writer
+// }
+//
+// func New(r io.Reader, opts ...Option) (*Interpreter, error) {
+// 	return nil, nil
+// }
+//
+// func (i Interpreter) Run(r io.Reader) error {
+// 	return nil
+// }
+
 type state struct {
 	Block
 	Values []Value
