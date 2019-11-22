@@ -818,6 +818,9 @@ func (p *Parser) parseFieldLong(id Token) (Node, error) {
 
 func (p *Parser) parseTypedef() (Node, error) {
 	p.nextToken()
+	if p.curr.Type != lparen {
+		return nil, fmt.Errorf("typedef: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
 	p.nextToken()
 	for !p.isDone() {
 		p.skipComment()
@@ -825,8 +828,9 @@ func (p *Parser) parseTypedef() (Node, error) {
 			break
 		}
 		var (
-			td           typedef
-			typok, lenok bool
+			td    typedef
+			typok bool
+			lenok bool
 		)
 		if !p.curr.isIdent() {
 			return nil, fmt.Errorf("typedef: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
