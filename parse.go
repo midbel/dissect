@@ -56,6 +56,8 @@ type Parser struct {
 	curr Token
 	peek Token
 
+	typedef map[string]typedef
+
 	stmts  map[string]func() (Node, error)
 	kwords map[string]func() (Node, error)
 	blocks []string
@@ -73,6 +75,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwPoly:    p.parsePair,
 		kwDeclare: p.parseDeclare,
 		kwDefine:  p.parseDefine,
+		kwTypdef:  p.parseTypedef,
 	}
 	p.stmts = map[string]func() (Node, error){
 		kwInclude:  p.parseInclude,
@@ -87,6 +90,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwPrint:    p.parsePrint,
 		kwEcho:     p.parseEcho,
 	}
+	p.typedef = make(map[string]typedef)
 	if err := p.pushFrame(r); err != nil {
 		return nil, err
 	}
@@ -379,7 +383,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 			} else {
 				id = Token{
 					Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
-					pos: p.curr.Pos(),
+					pos:     p.curr.Pos(),
 				}
 				p.inline++
 			}
@@ -812,6 +816,56 @@ func (p *Parser) parseFieldLong(id Token) (Node, error) {
 	return a, nil
 }
 
+func (p *Parser) parseTypedef() (Node, error) {
+	p.nextToken()
+	p.nextToken()
+	for !p.isDone() {
+		p.skipComment()
+		if p.curr.Type == rparen {
+			break
+		}
+		var (
+			td           typedef
+			typok, lenok bool
+		)
+		if !p.curr.isIdent() {
+			return nil, fmt.Errorf("typedef: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		td.label = p.curr
+		p.nextToken()
+		if p.curr.Type != Assign {
+			return nil, fmt.Errorf("typedef: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		p.nextToken()
+		if p.curr.Type == Keyword {
+			switch lit := p.curr.Literal; lit {
+			case kwInt, kwUint, kwFloat, kwBytes, kwString:
+				td.kind, typok = p.curr, true
+				p.nextToken()
+			default:
+				return nil, fmt.Errorf("typedef: unexepected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+		}
+		if p.curr.Type == Integer {
+			td.size, lenok = p.curr, true
+			p.nextToken()
+		}
+		if p.curr.Type == Keyword {
+			if p.curr.Literal == kwBig || p.curr.Literal == kwLittle {
+				td.endian = p.curr
+			} else {
+				return nil, fmt.Errorf("typdef: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			p.nextToken()
+		}
+		if !typok && !lenok {
+			return nil, fmt.Errorf("typdef: type and length not set %s (%s)", TokenString(td.label), td.Pos())
+		}
+		p.typedef[td.label.String()] = td
+	}
+	return nil, p.isClosed()
+}
+
 func (p *Parser) parseFieldShort(id Token) (Node, error) {
 	var (
 		typok bool
@@ -827,6 +881,16 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 		default:
 			return nil, fmt.Errorf("field: unexepected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
 		}
+	} else if p.curr.Type == Ident {
+		if td, ok := p.typedef[p.curr.Literal]; ok {
+			a.kind = td.kind
+			a.size = td.size
+			a.endian = td.endian
+		} else {
+			return nil, fmt.Errorf("field: unexpected ident %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+		p.nextToken()
+		return a, nil
 	}
 	if p.curr.Type == Integer {
 		a.size, lenok = p.curr, true

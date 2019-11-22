@@ -128,6 +128,7 @@ const (
 	kwPoly     = "polynomial"
 	kwPoint    = "pointpair"
 	kwBlock    = "block"
+	kwTypdef   = "typedef"
 	kwImport   = "import"
 	kwInclude  = "include"
 	kwRepeat   = "repeat"
@@ -165,6 +166,7 @@ var keywords = []string{
 	kwPoly,
 	kwPoint,
 	kwBlock,
+	kwTypdef,
 	kwImport,
 	kwInclude,
 	kwData,

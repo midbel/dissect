@@ -553,3 +553,18 @@ func (b Block) ResolvePair(pair string) (Pair, error) {
 	}
 	return Pair{}, fmt.Errorf("%s: pair not defined", pair)
 }
+
+type typedef struct {
+	label  Token
+	kind   Token
+	size   Token
+	endian Token
+}
+
+func (t typedef) Pos() Position {
+	return t.label.Pos()
+}
+
+func (t typedef) String() string {
+	return fmt.Sprintf("typedef(%s)", t.label.Literal)
+}
