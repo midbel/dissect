@@ -737,17 +737,24 @@ func (root *state) decodeInclude(n Include) error {
 }
 
 func (root *state) evalApply(v Value, n Node) error {
-	tok, ok := n.(Token)
-	if !ok {
+	var (
+		pair Pair
+		err  error
+	)
+	switch n := n.(type) {
+	case Token:
+		pair, err = root.ResolvePair(n.Literal)
+	case Pair:
+		pair = n
+	default:
 		v.Set(v)
 		return nil
 	}
-	p, err := root.ResolvePair(tok.Literal)
 	if err != nil {
 		return err
 	}
 	var fn func([]Constant, Value) (Value, error)
-	switch p.kind.Literal {
+	switch pair.kind.Literal {
 	case kwEnum:
 		fn = root.evalEnum
 	case kwPoly:
@@ -755,7 +762,7 @@ func (root *state) evalApply(v Value, n Node) error {
 	case kwPoint:
 		fn = root.evalPoint
 	}
-	x, err := fn(p.nodes, v)
+	x, err := fn(pair.nodes, v)
 	if err == nil {
 		v.Set(x)
 	}

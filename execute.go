@@ -3,6 +3,7 @@ package dissect
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,17 +12,28 @@ import (
 )
 
 func Dissect(script io.Reader, r io.Reader) error {
-	n, err := Parse(script)
+	// n, err := Parse(script)
+	// if err != nil {
+	// 	return err
+	// }
+	// root := n.(Block)
+	// data, err := root.ResolveData()
+	// if err != nil {
+	// 	return err
+	// }
+	node, err := Merge(script)
 	if err != nil {
 		return err
 	}
-	root := n.(Block)
-	data, err := root.ResolveData()
+	data, ok := node.(Data)
+	if !ok {
+		return fmt.Errorf("missing data block")
+	}
 	if err != nil {
 		return err
 	}
 	s := state{
-		Block: root,
+		// Block: root,
 		files: make(map[string]*os.File),
 	}
 	defer s.Close()
@@ -29,12 +41,20 @@ func Dissect(script io.Reader, r io.Reader) error {
 }
 
 func DissectFiles(script io.Reader, fs []string) error {
-	n, err := Parse(script)
+	// n, err := Parse(script)
+	// if err != nil {
+	// 	return err
+	// }
+	// root := n.(Block)
+	// data, err := root.ResolveData()
+	node, err := Merge(script)
 	if err != nil {
 		return err
 	}
-	root := n.(Block)
-	data, err := root.ResolveData()
+	data, ok := node.(Data)
+	if !ok {
+		return fmt.Errorf("missing data block")
+	}
 	if err != nil {
 		return err
 	}
@@ -47,7 +67,7 @@ func DissectFiles(script io.Reader, fs []string) error {
 		files = fs
 	}
 	s := state{
-		Block: root,
+		// Block: root,
 		files: make(map[string]*os.File),
 	}
 	defer s.Close()

@@ -35,6 +35,8 @@ func mergeBlock(dat, root Block) (Node, error) {
 		switch x := n.(type) {
 		default:
 			nx = n
+		case Parameter:
+			nx, err = mergeParameter(x, root)
 		case Include:
 			nx, err = mergeInclude(x, root)
 		case Repeat:
@@ -42,7 +44,12 @@ func mergeBlock(dat, root Block) (Node, error) {
 		case Match:
 			nx, err = mergeMatch(x, root)
 		case Reference:
-			nx, err = root.ResolveParameter(x.id.Literal)
+			p, e := root.ResolveParameter(x.id.Literal)
+			if e == nil {
+				nx, err = mergeParameter(p, root)
+			} else {
+				err = e
+			}
 		}
 		if err != nil {
 			return nil, err
@@ -54,6 +61,18 @@ func mergeBlock(dat, root Block) (Node, error) {
 	}
 	dat.nodes = nodes
 	return dat, nil
+}
+
+func mergeParameter(p Parameter, root Block) (Node, error) {
+	tok, ok := p.apply.(Token)
+	if !ok {
+		return p, nil
+	}
+	pair, err := root.ResolvePair(tok.Literal)
+	if err == nil {
+		p.apply = pair
+	}
+	return p, err
 }
 
 func mergeInclude(i Include, root Block) (Node, error) {
