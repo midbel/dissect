@@ -440,9 +440,9 @@ func (r Repeat) String() string {
 }
 
 type Include struct {
-	pos       Position
-	Predicate Expression
-	node      Node
+	pos  Position
+	cond Expression
+	node Node
 }
 
 func (i Include) String() string {

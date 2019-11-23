@@ -101,8 +101,8 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%scontinue(predicate=%s, pos=%s)", indent, predicate, n.Pos())
 	case Include:
 		predicate := kwTrue
-		if n.Predicate != nil {
-			predicate = n.Predicate.String()
+		if n.cond != nil {
+			predicate = n.cond.String()
 		}
 		fmt.Printf("%sinclude(predicate=%s, pos=%s) (\n", indent, predicate, n.Pos())
 		dumpNode(n.node, level+1)

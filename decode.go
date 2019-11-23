@@ -711,8 +711,8 @@ func (root *state) decodeRepeat(n Repeat) error {
 }
 
 func (root *state) decodeInclude(n Include) error {
-	if n.Predicate != nil {
-		ok, err := eval(n.Predicate, root)
+	if n.cond != nil {
+		ok, err := eval(n.cond, root)
 		if err != nil {
 			return err
 		}

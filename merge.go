@@ -1,5 +1,111 @@
 package dissect
 
-func merge(dat, root Block) (Node, error) {
+import (
+	"fmt"
+	"io"
+)
+
+func Merge(r io.Reader) (Node, error) {
+	n, err := Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	root, ok := n.(Block)
+	if !ok {
+		return nil, fmt.Errorf("root node is not a block")
+	}
+	dat, err := root.ResolveData()
+	if err != nil {
+		return nil, err
+	}
+	bck, err := mergeBlock(dat.Block, root)
+	if err == nil {
+		dat.Block = bck.(Block)
+	}
+	return dat, err
+}
+
+func mergeBlock(dat, root Block) (Node, error) {
+	nodes := make([]Node, 0, len(dat.nodes))
+	for _, n := range dat.nodes {
+		var (
+			nx  Node
+			err error
+		)
+		switch x := n.(type) {
+		default:
+			nx = n
+		case Include:
+			nx, err = mergeInclude(x, root)
+		case Repeat:
+			nx, err = mergeRepeat(x, root)
+		case Match:
+			nx, err = mergeMatch(x, root)
+		case Reference:
+			nx, err = root.ResolveParameter(x.id.Literal)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if nx == nil {
+			continue
+		}
+		nodes = append(nodes, nx)
+	}
+	dat.nodes = nodes
 	return dat, nil
+}
+
+func mergeInclude(i Include, root Block) (Node, error) {
+	node, err := mergeNode(i.node, root)
+	if err != nil {
+		return nil, err
+	}
+	i.node = node
+
+	if i.cond == nil {
+		return i.node, nil
+	}
+	return i, nil
+}
+
+func mergeRepeat(r Repeat, root Block) (Node, error) {
+	node, err := mergeNode(r.node, root)
+	if err == nil {
+		r.node = node
+	}
+	return r, err
+}
+
+func mergeMatch(m Match, root Block) (Node, error) {
+	for i, c := range m.nodes {
+		node, err := mergeNode(c.node, root)
+		if err != nil {
+			return nil, err
+		}
+		m.nodes[i].node = node
+	}
+	if m.alt.node != nil {
+		node, err := mergeNode(m.alt.node, root)
+		if err != nil {
+			return nil, err
+		}
+		m.alt.node = node
+	}
+	return m, nil
+}
+
+func mergeNode(node Node, root Block) (Node, error) {
+	var dat Block
+	switch n := node.(type) {
+	case Block:
+		dat = n
+	case Reference:
+		b, err := root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return nil, err
+		}
+		dat = b
+	}
+	return mergeBlock(dat, root)
 }

@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	merge := flag.Bool("m", false, "merge")
 	flag.Parse()
 
 	r, err := os.Open(flag.Arg(0))
@@ -18,11 +19,17 @@ func main() {
 	}
 	defer r.Close()
 
-	n, err := dissect.Parse(r)
+	var n dissect.Node
+	if *merge {
+		n, err = dissect.Merge(r)
+	} else {
+		n, err = dissect.Parse(r)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(25)
 	}
+
 	if err = dissect.Dump(n); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(23)

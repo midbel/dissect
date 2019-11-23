@@ -763,7 +763,7 @@ func (p *Parser) parseInclude() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		i.Predicate = expr
+		i.cond = expr
 	}
 	var err error
 	switch p.curr.Type {
