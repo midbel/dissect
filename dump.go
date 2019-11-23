@@ -84,7 +84,7 @@ func dumpNode(n Node, level int) error {
 		dumpNode(n.node, level+1)
 		fmt.Printf("%s)", indent)
 	case Repeat:
-		fmt.Printf("%srepeat(repeat=%s, pos=%s) (\n", indent, n.repeat.Literal, n.Pos())
+		fmt.Printf("%srepeat(repeat=%s, pos=%s) (\n", indent, n.repeat, n.Pos())
 		dumpNode(n.node, level+1)
 		fmt.Printf("%s)", indent)
 	case Break:

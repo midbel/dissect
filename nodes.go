@@ -427,7 +427,7 @@ func (m Match) String() string {
 
 type Repeat struct {
 	pos    Position
-	repeat Token
+	repeat Expression
 	node   Node
 }
 

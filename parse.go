@@ -408,13 +408,20 @@ func (p *Parser) parseStatements() ([]Node, error) {
 func (p *Parser) parseRepeat() (Node, error) {
 	r := Repeat{pos: p.curr.Pos()}
 	p.nextToken()
-	if !(p.curr.isNumber() || p.curr.isIdent()) {
-		return nil, fmt.Errorf("repeat: expected ident/number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	if p.curr.Type != lsquare {
+		return nil, fmt.Errorf("repeat: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	r.repeat = p.curr
-	p.nextToken()
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	switch expr.(type) {
+	case Unary, Identifier, Literal:
+		r.repeat = expr
+	default:
+		return nil, fmt.Errorf("repeat: invalid expression type %s", expr)
+	}
 
-	var err error
 	switch p.curr.Type {
 	case lparen:
 		pos := p.curr.Pos()
