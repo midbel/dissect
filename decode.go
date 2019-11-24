@@ -53,6 +53,8 @@ const numbit = 8
 
 type state struct {
 	Block
+	data Block
+
 	Values []Value
 	files  map[string]*os.File
 
@@ -63,6 +65,9 @@ type state struct {
 
 	blocks      []string
 	currentFile string
+
+	stdout io.Writer
+	stderr io.Writer
 }
 
 func (root *state) Close() error {
@@ -75,7 +80,7 @@ func (root *state) Close() error {
 	return err
 }
 
-func (root *state) Run(dat Block, r io.Reader) error {
+func (root *state) Run(r io.Reader) error {
 	root.Reset(r)
 	for {
 		if err := root.growBuffer(0); err != nil {
@@ -84,7 +89,7 @@ func (root *state) Run(dat Block, r io.Reader) error {
 		if root.Size() == 0 {
 			break
 		}
-		if err := root.decodeBlock(dat); err != nil {
+		if err := root.decodeBlock(root.data); err != nil {
 			if errors.Is(err, ErrDone) {
 				break
 			}
@@ -327,9 +332,9 @@ func (root *state) decodeBlock(data Block) error {
 func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 	if file == "" || file == "-" {
 		if echo {
-			return os.Stderr, nil
+			return root.stderr, nil
 		}
-		return os.Stdout, nil
+		return root.stdout, nil
 	}
 	if file == "/dev/null" {
 		return ioutil.Discard, nil

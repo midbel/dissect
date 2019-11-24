@@ -34,10 +34,13 @@ func Dissect(script io.Reader, r io.Reader) error {
 	}
 	s := state{
 		// Block: root,
-		files: make(map[string]*os.File),
+		data:   data.Block,
+		files:  make(map[string]*os.File),
+		stdout: os.Stdout,
+		stderr: os.Stderr,
 	}
 	defer s.Close()
-	return s.Run(data.Block, r)
+	return s.Run(r)
 }
 
 func DissectFiles(script io.Reader, fs []string) error {
@@ -68,7 +71,10 @@ func DissectFiles(script io.Reader, fs []string) error {
 	}
 	s := state{
 		// Block: root,
-		files: make(map[string]*os.File),
+		data:   data.Block,
+		files:  make(map[string]*os.File),
+		stdout: os.Stdout,
+		stderr: os.Stderr,
 	}
 	defer s.Close()
 
@@ -77,7 +83,7 @@ func DissectFiles(script io.Reader, fs []string) error {
 		if err != nil {
 			continue
 		}
-		err = s.Run(data.Block, r)
+		err = s.Run(r)
 		r.Close()
 		if err != nil {
 			return err
