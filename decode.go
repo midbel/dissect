@@ -83,7 +83,7 @@ func (root *state) Close() error {
 func (root *state) Run(r io.Reader) error {
 	root.Reset(r)
 	for {
-		if err := root.growBuffer(0); err != nil {
+		if err := root.growBuffer(4096); err != nil {
 			return err
 		}
 		if root.Size() == 0 {
