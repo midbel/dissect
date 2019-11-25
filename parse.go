@@ -185,9 +185,6 @@ func (p *Parser) parseEcho() (Node, error) {
 }
 
 func (p *Parser) parsePrint() (Node, error) {
-	if !p.inBlock(kwData) {
-		return nil, fmt.Errorf("print: unexpected outside of data bock (%s)", p.curr.Pos())
-	}
 	f := Print{
 		pos:    p.curr.Pos(),
 		file:   Token{Literal: "-", Type: Ident},
