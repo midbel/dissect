@@ -35,6 +35,8 @@ func mergeBlock(dat, root Block) (Node, error) {
 		switch x := n.(type) {
 		default:
 			nx = n
+		case Block:
+			nx, err = mergeBlock(x, root)
 		case Parameter:
 			nx, err = mergeParameter(x, root)
 		case Include:
