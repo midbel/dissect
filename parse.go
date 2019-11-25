@@ -1154,7 +1154,9 @@ func (p *Parser) parseBlockId() (Token, error) {
 	if !p.curr.isIdent() {
 		return Token{}, fmt.Errorf("id: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-	return p.curr, nil
+	id = p.curr
+	p.nextToken()
+	return id, nil
 }
 
 func (p *Parser) isDone() bool {
