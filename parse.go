@@ -368,24 +368,17 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		case Ident, Text:
 			node, err = p.parseField()
 		case lparen:
+			pos := p.curr.Pos()
 			xs, err := p.parseStatements()
 			if err != nil {
 				return nil, err
 			}
-			var id Token
-			if p.curr.Type == Keyword {
-				if p.curr.Literal != kwAs {
-					return nil, fmt.Errorf("statement: expected as, got %s (%s)", p.curr, p.curr.Pos())
-				}
-				p.nextToken()
-				id = p.curr
-				p.nextToken()
-			} else {
-				id = Token{
-					Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
-					pos:     p.curr.Pos(),
-				}
-				p.inline++
+			id, err := p.parseBlockId()
+			if err != nil {
+				return nil, err
+			}
+			if !id.pos.IsValid() {
+				id.pos = pos
 			}
 			b := Block{
 				id:    id,
@@ -426,13 +419,14 @@ func (p *Parser) parseRepeat() (Node, error) {
 	case lparen:
 		pos := p.curr.Pos()
 		if ns, e := p.parseStatements(); e == nil {
-			tok := Token{
-				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
-				Type:    Keyword,
-				pos:     pos,
+			id, err := p.parseBlockId()
+			if err != nil {
+				return nil, err
 			}
-			p.inline++
-			r.node = Block{id: tok, nodes: ns}
+			if !id.pos.IsValid() {
+				id.pos = pos
+			}
+			r.node = Block{id: id, nodes: ns}
 		} else {
 			err = e
 		}
@@ -724,18 +718,20 @@ func (p *Parser) parseMatch() (Node, error) {
 			node = Reference{id: p.curr}
 			p.nextToken()
 		case lparen:
+			pos := p.curr.Pos()
 			ns, err := p.parseStatements()
 			if err != nil {
 				return nil, err
 			}
-			tok := Token{
-				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
-				Type:    Keyword,
-				pos:     m.Pos(),
+			id, err := p.parseBlockId()
+			if err != nil {
+				return nil, err
 			}
-			p.inline++
+			if !id.pos.IsValid() {
+				id.pos = pos
+			}
 			node = Block{
-				id:    tok,
+				id:    id,
 				nodes: ns,
 			}
 		default:
@@ -770,14 +766,16 @@ func (p *Parser) parseInclude() (Node, error) {
 	case Ident, Text:
 		i.node = Reference{id: p.curr}
 	case lparen:
+		pos := i.Pos()
 		if ns, e := p.parseStatements(); e == nil {
-			tok := Token{
-				Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
-				Type:    Keyword,
-				pos:     i.Pos(),
+			id, err := p.parseBlockId()
+			if err != nil {
+				return nil, err
 			}
-			p.inline++
-			i.node = Block{id: tok, nodes: ns}
+			if !id.pos.IsValid() {
+				id.pos = pos
+			}
+			i.node = Block{id: id, nodes: ns}
 		} else {
 			err = e
 		}
@@ -1137,6 +1135,26 @@ func (p *Parser) parsePair() (Node, error) {
 		a.nodes = append(a.nodes, n.(Constant))
 	}
 	return a, p.isClosed()
+}
+
+func (p *Parser) parseBlockId() (Token, error) {
+	var id Token
+	if p.curr.Type != Keyword {
+		id = Token{
+			Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
+			Type:    Keyword,
+		}
+		p.inline++
+		return id, nil
+	}
+	if p.curr.Literal != kwAs {
+		return Token{}, fmt.Errorf("id: expected as, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return Token{}, fmt.Errorf("id: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	return p.curr, nil
 }
 
 func (p *Parser) isDone() bool {
