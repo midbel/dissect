@@ -356,7 +356,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 			err  error
 			node Node
 		)
-		switch p.curr.Type {
+		switch pos := p.curr.Pos(); p.curr.Type {
 		case Keyword:
 			parse, ok := p.stmts[p.curr.Literal]
 			if !ok {
@@ -368,7 +368,6 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		case Ident, Text:
 			node, err = p.parseField()
 		case lparen:
-			pos := p.curr.Pos()
 			xs, err := p.parseStatements()
 			if err != nil {
 				return nil, err
@@ -415,9 +414,8 @@ func (p *Parser) parseRepeat() (Node, error) {
 		return nil, fmt.Errorf("repeat: invalid expression type %s", expr)
 	}
 
-	switch p.curr.Type {
+	switch pos := p.curr.Pos(); p.curr.Type {
 	case lparen:
-		pos := p.curr.Pos()
 		if ns, e := p.parseStatements(); e == nil {
 			id, err := p.parseBlockId()
 			if err != nil {
@@ -680,74 +678,87 @@ func (p *Parser) parseMatch() (Node, error) {
 			break
 		}
 
-		var mcs []MatchCase
-		for !p.isDone() {
-			if p.curr.Type == Assign {
-				break
-			}
-			if p.curr.Type == underscore {
-				if p.peek.Type != Assign {
-					return nil, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-				}
-				if pos := m.alt.Pos(); pos.IsValid() {
-					return nil, fmt.Errorf("match: default branch already defined (%s)", p.curr.Pos())
-				}
-				m.alt = MatchCase{cond: p.curr}
-				p.nextToken()
-				break
-			}
-			if p.curr.Type != Integer {
-				return nil, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-			}
-
-			mcs = append(mcs, MatchCase{cond: p.curr})
-			p.nextToken()
-			if p.curr.Type == comma {
-				p.nextToken()
-			}
+		mcs, alt, err := p.parseMatchCase()
+		if err != nil {
+			return nil, err
 		}
-
-		if p.curr.Type != Assign {
-			return nil, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		p.nextToken()
-
-		var node Node
-		switch p.curr.Type {
-		case Ident, Text:
-			node = Reference{id: p.curr}
-			p.nextToken()
-		case lparen:
-			pos := p.curr.Pos()
-			ns, err := p.parseStatements()
-			if err != nil {
-				return nil, err
+		if alt {
+			if pos := m.alt.Pos(); pos.IsValid() {
+				return nil, fmt.Errorf("match: default case already set (%s)", pos)
 			}
-			id, err := p.parseBlockId()
-			if err != nil {
-				return nil, err
-			}
-			if !id.pos.IsValid() {
-				id.pos = pos
-			}
-			node = Block{
-				id:    id,
-				nodes: ns,
-			}
-		default:
-			return nil, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		if len(mcs) == 0 {
-			m.alt.node = node
+			m.alt = mcs[0]
 		} else {
-			for i := range mcs {
-				mcs[i].node = node
-			}
+			m.nodes = append(m.nodes, mcs...)
 		}
-		m.nodes = append(m.nodes, mcs...)
 	}
 	p.nextToken()
 	return m, nil
+}
+
+func (p *Parser) parseMatchCase() ([]MatchCase, bool, error) {
+	var (
+		mcs []MatchCase
+		alt bool
+	)
+	for !p.isDone() {
+		if p.curr.Type == Assign {
+			break
+		}
+		if p.curr.Type == underscore {
+			if len(mcs) > 0 {
+				return nil, alt, fmt.Errorf("match: default case should be alone %s (%s)", TokenString(p.curr), p.curr.Pos())
+			}
+			mcs, alt = append(mcs, MatchCase{cond: p.curr}), true
+			p.nextToken()
+			break
+		}
+
+		if p.curr.Type != Integer {
+			return nil, alt, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		}
+
+		mcs = append(mcs, MatchCase{cond: p.curr})
+		p.nextToken()
+		if p.curr.Type == comma {
+			p.nextToken()
+		}
+	}
+
+	if p.curr.Type != Assign {
+		return nil, alt, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+	p.nextToken()
+
+	var node Node
+	switch pos := p.curr.Pos(); p.curr.Type {
+	case Ident, Text:
+		node = Reference{id: p.curr}
+		p.nextToken()
+	case lparen:
+		ns, err := p.parseStatements()
+		if err != nil {
+			return nil, alt, err
+		}
+		id, err := p.parseBlockId()
+		if err != nil {
+			return nil, alt, err
+		}
+		if !id.pos.IsValid() {
+			id.pos = pos
+		}
+		node = Block{
+			id:    id,
+			nodes: ns,
+		}
+	default:
+		return nil, alt, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	}
+
+	for i := range mcs {
+		mcs[i].node = node
+	}
+
+	return mcs, alt, nil
 }
 
 func (p *Parser) parseInclude() (Node, error) {
@@ -762,11 +773,10 @@ func (p *Parser) parseInclude() (Node, error) {
 		i.cond = expr
 	}
 	var err error
-	switch p.curr.Type {
+	switch pos := i.Pos(); p.curr.Type {
 	case Ident, Text:
 		i.node = Reference{id: p.curr}
 	case lparen:
-		pos := i.Pos()
 		if ns, e := p.parseStatements(); e == nil {
 			id, err := p.parseBlockId()
 			if err != nil {
