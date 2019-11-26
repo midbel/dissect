@@ -34,7 +34,7 @@ func dumpNode(n Node, level int) error {
 			fmt.Printf("%s)", indent)
 		}
 	case Echo:
-		fmt.Printf("%secho(pattern=%s, pos=%s)", indent, n.pattern, n.Pos())
+		fmt.Printf("%secho(string=%s, pos=%s)", indent, n, n.Pos())
 	case Data:
 		fs := make([]string, len(n.files))
 		for i := 0; i < len(n.files); i++ {

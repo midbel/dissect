@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -150,38 +151,60 @@ func (p *Parser) parseEcho() (Node, error) {
 		file: Token{Literal: "-"},
 	}
 	p.nextToken()
-	for !p.isDone() {
-		if p.curr.Type == Newline || p.curr.Type == Greater {
-			break
-		}
-		curr := p.curr
-		var node Node
-		if p.peek.Type == dot {
-			p.nextToken()
-			p.nextToken()
-
-			node = Member{
-				ref:  curr,
-				attr: p.curr,
-			}
-		} else {
-			node = curr
-		}
-		e.nodes = append(e.nodes, node)
-		p.nextToken()
+	if p.curr.Type != Text {
+		return nil, fmt.Errorf("echo: expected string, got %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}
-
-	if p.curr.Type == Greater {
-		p.nextToken()
-		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("echo: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-		}
-		e.file = p.curr
-		p.nextToken()
+	es, err := p.parseEchoString()
+	if err != nil {
+		return nil, err
 	}
+	e.expr = es
 
 	p.nextToken()
 	return e, nil
+}
+
+func (p *Parser) parseEchoString() ([]Expression, error) {
+	var (
+		expr     []Expression
+		offset   int
+		template = p.curr.Literal
+	)
+	for {
+		i := strings.IndexByte(template[offset:], lsquare)
+		if i < 0 {
+			break
+		}
+		offset += i
+		if i > 0 && template[offset-1] != modulo {
+			continue
+		}
+		tok := Token{
+			Literal: template[offset-i : offset-1],
+			Type:    Text,
+		}
+		j := strings.IndexByte(template[offset:], rsquare)
+		if j < 0 {
+			return nil, fmt.Errorf("echo: expression not closed %s (%s)", template, p.curr.Pos())
+		}
+		if j <= 1 {
+			return nil, fmt.Errorf("echo: empty expression %s (%s)", template, p.curr.Pos())
+		}
+		e, err := parseString(template[offset+1 : offset+j])
+		if err != nil {
+			return nil, err
+		}
+		offset += j + 1
+		expr = append(expr, Literal{id: tok}, e)
+	}
+	if str := template[offset:]; len(str) > 0 {
+		tok := Token{
+			Literal: template[offset:],
+			Type:    Text,
+		}
+		expr = append(expr, Literal{id: tok})
+	}
+	return expr, nil
 }
 
 func (p *Parser) parsePrint() (Node, error) {

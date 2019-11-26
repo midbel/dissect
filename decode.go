@@ -20,6 +20,7 @@ var (
 	ErrDone     = errors.New("done")
 	errBreak    = errors.New("break")
 	errContinue = errors.New("continue")
+	errShort    = errors.New("short buffer")
 )
 
 const numbit = 8
@@ -285,7 +286,6 @@ func (root *state) decodeBlock(data Block) error {
 				return err
 			}
 		case Repeat:
-			// ignore for now
 			if err := root.decodeRepeat(n); err != nil {
 				return err
 			}
@@ -363,45 +363,20 @@ func (root *state) decodeEcho(e Echo) error {
 	if err != nil {
 		return err
 	}
-	var buf bytes.Buffer
-	for _, n := range e.nodes {
-		dat := make([]byte, 0, 64)
-		switch n := n.(type) {
-		case Member:
-			v, err := root.ResolveValue(n.ref.Literal)
-			if err != nil {
-				return err
-			}
-			switch n.attr.Literal {
-			case methEng:
-				dat = appendEng(dat, v, false)
-			case methRaw:
-				dat = appendRaw(dat, v, false)
-			case methId:
-				dat = []byte(v.String())
-			case methPos:
-				dat = strconv.AppendInt(dat, int64(v.Offset()), 10)
-			default:
-				return fmt.Errorf("unknown attribute %s", n.attr.Literal)
-			}
-		case Token:
-			if n.Type == Internal {
-				i, err := root.ResolveInternal(n.Literal)
-				if err != nil {
-					return err
-				}
-				dat = appendRaw(dat, i, false)
-			} else {
-				dat = []byte(n.Literal)
-			}
-		default:
-			continue
+	var (
+		buf bytes.Buffer
+		dat = make([]byte, 0, 64)
+	)
+	for _, e := range e.expr {
+		v, err := eval(e, root)
+		if err != nil {
+			return err
 		}
-		buf.Write(dat)
+		buf.Write(appendRaw(dat, v, false))
 	}
 	buf.WriteString("\r\n")
-	io.Copy(w, &buf)
-	return nil
+	_, err = io.Copy(w, &buf)
+	return err
 }
 
 func (root *state) decodePrint(p Print) error {
@@ -498,6 +473,9 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Value, error) {
 		meta = Meta{Id: p.id.Literal, Pos: root.Pos}
 		raw  Value
 	)
+	if n := root.Size() / numbit; n < index+bits {
+		return nil, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)
+	}
 	switch p.is() {
 	case kindBytes:
 		raw = &Bytes{
@@ -526,8 +504,9 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, er
 	if bits > 1 {
 		mask = (1 << bits) - 1
 	}
-	if n := root.Size(); n < index+need {
-		return nil, fmt.Errorf("buffer too short (missing %d bytes)", need-n)
+	if n := root.Size() / numbit; n < index+need {
+		// fmt.Println(index, need, len(root.buffer))
+		return nil, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+need)-n, p)
 	}
 	meta := Meta{
 		Id:  p.id.Literal,

@@ -66,6 +66,7 @@ const (
 	mul        = '*'
 	div        = '/'
 	question   = '?'
+	modulo     = '%'
 )
 
 func init() {
@@ -314,6 +315,9 @@ func TokenString(t Token) string {
 		str string
 		lit = t.Literal
 	)
+	if lit == "" {
+		lit = "???"
+	}
 	switch t.Type {
 	case Modulo:
 		return "<modulo>"

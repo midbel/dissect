@@ -225,10 +225,9 @@ func (t Ternary) isBoolean() bool {
 }
 
 type Echo struct {
-	pos     Position
-	pattern Token
-	file    Token
-	nodes   []Node
+	pos  Position
+	file Token
+	expr []Expression
 }
 
 func (e Echo) Pos() Position {
@@ -236,21 +235,45 @@ func (e Echo) Pos() Position {
 }
 
 func (e Echo) String() string {
-	return "echo" //fmt.Sprintf("echo(%v)", e.nodes)
+	var buf strings.Builder
+	for _, x := range e.expr {
+		switch x := x.(type) {
+		case Literal:
+			buf.WriteString(x.id.String())
+		default:
+			buf.WriteRune(modulo)
+			buf.WriteRune(lsquare)
+			buf.WriteString(x.String())
+			buf.WriteRune(rsquare)
+		}
+	}
+	return buf.String() // "echo"
 }
 
-type Member struct {
-	ref  Token
-	attr Token
-}
-
-func (m Member) Pos() Position {
-	return m.ref.Pos()
-}
-
-func (m Member) String() string {
-	return fmt.Sprintf("%s.%s", m.ref.Literal, m.attr.Literal)
-}
+// type Note struct {
+// 	tok Token
+// }
+//
+// func (n Note) Pos() Position {
+// 	return n.tok.Pos()
+// }
+//
+// func (n Note) String() string {
+// 	return n.tok.String()
+// }
+//
+// // type Member struct {
+// // 	ref  Token
+// // 	attr Token
+// // }
+// //
+// // func (m Member) Pos() Position {
+// // 	return m.ref.Pos()
+// // }
+// //
+// // func (m Member) String() string {
+// // 	return fmt.Sprintf("%s.%s", m.ref.Literal, m.attr.Literal)
+// // }
 
 type Print struct {
 	pos    Position

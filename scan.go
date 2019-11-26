@@ -153,7 +153,7 @@ func (s *Scanner) scanNumber(tok *Token) {
 
 			accept = isHexa
 			nodot = true
-		case dot, newline, comma, rsquare, rparen, space, tab:
+		case dot, newline, comma, rsquare, rparen, space, tab, EOF:
 		default:
 			tok.Type = Illegal
 			return
@@ -184,8 +184,11 @@ func (s *Scanner) scanNumber(tok *Token) {
 		return
 	default:
 	}
-
-	tok.Literal = string(s.buffer[pos:s.pos])
+	if s.pos == pos {
+		tok.Literal = string(s.buffer[pos : s.pos+1])
+	} else {
+		tok.Literal = string(s.buffer[pos:s.pos])
+	}
 	s.unreadRune()
 }
 
@@ -216,7 +219,11 @@ func (s *Scanner) scanIdent(tok *Token) {
 		s.readRune()
 	}
 
-	tok.Literal = string(s.buffer[pos:s.pos])
+	if s.char == EOF {
+		tok.Literal = string(s.buffer[pos : s.pos+1])
+	} else {
+		tok.Literal = string(s.buffer[pos:s.pos])
+	}
 	tok.Type = Ident
 
 	s.unreadRune()
