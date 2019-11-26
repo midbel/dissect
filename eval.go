@@ -25,12 +25,41 @@ func eval(e Expression, root *state) (Value, error) {
 		v, err = evalLiteral(e, root)
 	case Identifier:
 		v, err = evalIdentifier(e, root)
+	case Member:
+		v, err = evalMember(e, root)
 	case Assignment:
 		v, err = evalAssign(e, root)
 	default:
 		err = fmt.Errorf("unsupported expression type %T", e)
 	}
 	return v, err
+}
+
+func evalMember(m Member, root *state) (Value, error) {
+	v, err := evalIdentifier(Identifier{id: m.ref}, root)
+	if err != nil {
+		return nil, err
+	}
+	var val Value
+	switch m.attr.Literal {
+	case "raw":
+		val = v
+	case "eng":
+		val = v.eng()
+	case "id":
+		val = &String{
+			Meta: Meta{Id: m.attr.Literal},
+			Raw:  m.String(),
+		}
+	case "pos":
+		val = &Int{
+			Meta: Meta{Id: m.attr.Literal},
+			Raw:  int64(v.Offset()),
+		}
+	default:
+		return nil, fmt.Errorf("unknown attribute %s", m.attr.Literal)
+	}
+	return val, nil
 }
 
 func evalTernary(t Ternary, root *state) (Value, error) {

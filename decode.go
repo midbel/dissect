@@ -39,9 +39,16 @@ const numbit = 8
 // 	}
 // }
 //
+// func WithWordLen(n uint8) Option {
+// 	return func(i *Interpreter) error {
+// 		i.wordlen = int(n)
+// 	}
+// }
+//
 // type Interpreter struct {
-// 	stdout io.Writer
-// 	stderr io.Writer
+// 	stdout  io.Writer
+// 	stderr  io.Writer
+//  wordlen int
 // }
 //
 // func New(r io.Reader, opts ...Option) (*Interpreter, error) {

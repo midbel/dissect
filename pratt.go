@@ -84,7 +84,17 @@ func (p *pratt) parsePrefix() (Expression, error) {
 	case Integer, Float, Bool, Text:
 		expr = Literal{id: p.curr}
 	case Ident, Internal:
-		expr = Identifier{id: p.curr}
+		id := p.curr
+		if p.peek.Type == dot {
+			p.nextToken()
+			p.nextToken()
+			expr = Member{
+				ref:  id,
+				attr: p.curr,
+			}
+		} else {
+			expr = Identifier{id: p.curr}
+		}
 	default:
 		return nil, fmt.Errorf("pratt: unexpected token type %s (%s)", TokenString(p.curr), p.curr.Pos())
 	}

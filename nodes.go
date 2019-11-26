@@ -261,19 +261,27 @@ func (e Echo) String() string {
 // func (n Note) String() string {
 // 	return n.tok.String()
 // }
-//
-// // type Member struct {
-// // 	ref  Token
-// // 	attr Token
-// // }
-// //
-// // func (m Member) Pos() Position {
-// // 	return m.ref.Pos()
-// // }
-// //
-// // func (m Member) String() string {
-// // 	return fmt.Sprintf("%s.%s", m.ref.Literal, m.attr.Literal)
-// // }
+
+type Member struct {
+	ref  Token
+	attr Token
+}
+
+func (m Member) Pos() Position {
+	return m.ref.Pos()
+}
+
+func (m Member) String() string {
+	return fmt.Sprintf("%s.%s", m.ref.Literal, m.attr.Literal)
+}
+
+func (m Member) exprNode() Node {
+	return m
+}
+
+func (m Member) isBoolean() bool {
+	return false
+}
 
 type Print struct {
 	pos    Position

@@ -35,6 +35,7 @@ type Value interface {
 	or(Value) (Value, error)
 
 	setId(string)
+	eng() Value
 	skip() bool
 }
 
@@ -62,6 +63,13 @@ func (m *Meta) setId(s string) {
 
 func (m *Meta) skip() bool {
 	return len(m.Id) == 0 || m.Id[0] == underscore
+}
+
+func (m *Meta) eng() Value {
+	if m.Eng == nil {
+		return &Null{}
+	}
+	return m.Eng
 }
 
 type Null struct {
