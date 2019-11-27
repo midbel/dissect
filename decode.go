@@ -133,7 +133,7 @@ func (root *state) reset() {
 
 func (root *state) growBuffer(bits int) error {
 	pos := (root.Pos + bits) / numbit
-	if n := len(root.buffer); n >= 4096 || (bits > 0 && pos < n) {
+	if n := len(root.buffer); (bits > 0 && pos < n) {
 		return nil
 	}
 
@@ -668,16 +668,8 @@ func (root *state) decodeSeek(n Seek) error {
 func (root *state) decodeRepeat(n Repeat) error {
 	var (
 		dat    Block
-		repeat uint64
 		err    error
 	)
-	v, err := eval(n.repeat, root)
-	if err != nil {
-		return err
-	}
-	if repeat = asUint(v); repeat == 0 {
-		repeat++
-	}
 	switch n := n.node.(type) {
 	case Block:
 		dat = n
@@ -686,6 +678,43 @@ func (root *state) decodeRepeat(n Repeat) error {
 	}
 	if err != nil {
 		return err
+	}
+	var eval func(Expression, Block) error
+	if n.repeat.isBoolean() {
+		eval = root.evalRepeatBool
+	} else {
+		eval = root.evalRepeatUint
+	}
+	return eval(n.repeat, dat)
+}
+
+func (root *state) evalRepeatBool(expr Expression, dat Block) error {
+	var (
+		val Value
+		err error
+	)
+	for val, err = eval(expr, root); err == nil && isTrue(val); val, err = eval(expr, root) {
+		if err = root.decodeBlock(dat); err != nil {
+			if errors.Is(err, errContinue) {
+				continue
+			}
+			if errors.Is(err, errBreak) {
+				err = nil
+			}
+			break
+		}
+	}
+	return err
+}
+
+func (root *state) evalRepeatUint(expr Expression, dat Block) error {
+	v, err := eval(expr, root)
+	if err != nil {
+		return err
+	}
+	repeat := asUint(v)
+	if repeat == 0 {
+		repeat++
 	}
 	for i := uint64(0); i < repeat; i++ {
 		if err = root.decodeBlock(dat); err != nil {

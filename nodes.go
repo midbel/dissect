@@ -180,7 +180,7 @@ func (b Binary) exprNode() Node {
 
 func (b Binary) isBoolean() bool {
 	switch b.operator {
-	case Equal, NotEq, Lesser, Greater, LessEq, GreatEq:
+	case Equal, NotEq, Lesser, Greater, LessEq, GreatEq, And, Or:
 		return true
 	default:
 		return false

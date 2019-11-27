@@ -430,12 +430,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	switch expr.(type) {
-	case Unary, Identifier, Literal:
-		r.repeat = expr
-	default:
-		return nil, fmt.Errorf("repeat: invalid expression type %s", expr)
-	}
+	r.repeat = expr
 
 	switch pos := p.curr.Pos(); p.curr.Type {
 	case lparen:
