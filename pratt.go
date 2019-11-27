@@ -21,6 +21,9 @@ func parseString(str string) (Expression, error) {
 		return nil, err
 	}
 	p := pratt{scan: s}
+	p.prefix = map[rune]func() (Expression, error){}
+	p.infix = map[rune]func(Expression) (Expression, error){}
+
 	p.nextToken()
 	p.nextToken()
 

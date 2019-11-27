@@ -111,6 +111,11 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%sreference(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
 	case Parameter:
 		fmt.Printf("%sparameter(name=%s, type=%s, size=%s, pos=%s)", indent, n.id.Literal, n.kind.Literal, n.size.Literal, n.Pos())
+		if p, ok := n.apply.(Pair); ok {
+			fmt.Print(" (\n")
+			dumpNode(p, level+1)
+			fmt.Printf("%s)", indent)
+		}
 	case Constant:
 		fmt.Printf("%sconstant(name=%s, value=%s, pos=%s)", indent, n.id.Literal, n.value, n.Pos())
 	default:

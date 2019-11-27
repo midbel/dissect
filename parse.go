@@ -1,11 +1,16 @@
 package dissect
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
+)
+
+var (
+	ErrUnexpected = errors.New("unexpected token")
+	ErrSyntax     = errors.New("syntax error")
 )
 
 const (
@@ -118,11 +123,11 @@ func (p *Parser) Parse() (Node, error) {
 			break
 		}
 		if p.curr.Type != Keyword {
-			return nil, fmt.Errorf("parse: unexpected token: %s (%s)", p.curr, p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		parse, ok := p.kwords[p.curr.Literal]
 		if !ok {
-			return nil, fmt.Errorf("parse: unknown keyword: %s (%s)", p.curr.Literal, p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		p.pushBlock(p.curr.Literal)
 		n, err := parse()
@@ -139,7 +144,7 @@ func (p *Parser) Parse() (Node, error) {
 
 func (p *Parser) isClosed() error {
 	if p.curr.Type != rparen {
-		return fmt.Errorf("parse: expected ), got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError(")")
 	}
 	p.nextToken()
 	return nil
@@ -152,7 +157,7 @@ func (p *Parser) parseEcho() (Node, error) {
 	}
 	p.nextToken()
 	if p.curr.Type != Text {
-		return nil, fmt.Errorf("echo: expected string, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("string")
 	}
 	es, err := p.parseEchoString()
 	if err != nil {
@@ -219,7 +224,7 @@ func (p *Parser) parsePrint() (Node, error) {
 		switch p.curr.Literal {
 		case methBoth, methRaw, methEng, methDebug:
 		default:
-			return nil, fmt.Errorf("print: unexpected method %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		f.method = p.curr
 		p.nextToken()
@@ -237,22 +242,22 @@ func (p *Parser) parsePrint() (Node, error) {
 		} else if kw == kwWith {
 			err = p.parsePrintWith(&f)
 		} else {
-			err = fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			err = p.unexpectedError()
 		}
 	case Newline:
 	default:
-		err = fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+		err = p.unexpectedError()
 	}
 	return f, err
 }
 
 func (p *Parser) parsePrintTo(f *Print) error {
 	if p.curr.Literal != kwTo {
-		return fmt.Errorf("print: expected to, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError("to")
 	}
 	p.nextToken()
 	if !p.curr.isIdent() {
-		return fmt.Errorf("print: expected ident/text, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError("ident")
 	}
 	f.file = p.curr
 	p.nextToken()
@@ -263,22 +268,22 @@ func (p *Parser) parsePrintTo(f *Print) error {
 		} else if kw == kwWith {
 			return p.parsePrintWith(f)
 		} else {
-			return fmt.Errorf("print: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return p.unexpectedError()
 		}
 	case Newline:
 	default:
-		return fmt.Errorf("print: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.unexpectedError()
 	}
 	return nil
 }
 
 func (p *Parser) parsePrintAs(f *Print) error {
 	if p.curr.Literal != kwAs {
-		return fmt.Errorf("print: expected as, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError(kwAs)
 	}
 	p.nextToken()
 	if p.curr.Type != Ident {
-		return fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError("ident")
 	}
 	switch p.curr.Literal {
 	case fmtCSV, fmtTuple, fmtSexp:
@@ -292,19 +297,19 @@ func (p *Parser) parsePrintAs(f *Print) error {
 		return p.parsePrintWith(f)
 	case Newline:
 	default:
-		return fmt.Errorf("print: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.unexpectedError()
 	}
 	return nil
 }
 
 func (p *Parser) parsePrintWith(f *Print) error {
 	if p.curr.Literal != kwWith {
-		return fmt.Errorf("print: expected with, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError("with")
 	}
 	p.nextToken()
 	for p.curr.Type != Newline {
 		if p.curr.Type != Ident {
-			return fmt.Errorf("print: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return p.expectedError("ident")
 		}
 		f.values = append(f.values, p.curr)
 		p.nextToken()
@@ -321,16 +326,15 @@ func (p *Parser) parseContinue() (Node, error) {
 	}
 	p.nextToken()
 	if p.curr.Type != lsquare {
-		return nil, fmt.Errorf("break: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("[")
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
 	}
 	c.expr = expr
-	// p.nextToken()
 	if p.curr.Type != Newline {
-		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("newline")
 	}
 	p.nextToken()
 	return c, nil
@@ -345,16 +349,15 @@ func (p *Parser) parseBreak() (Node, error) {
 	}
 	p.nextToken()
 	if p.curr.Type != lsquare {
-		return nil, fmt.Errorf("break: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("[")
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
 	}
 	b.expr = expr
-	// p.nextToken()
 	if p.curr.Type != Newline {
-		return nil, fmt.Errorf("break: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("newline")
 	}
 	p.nextToken()
 	return b, nil
@@ -362,7 +365,7 @@ func (p *Parser) parseBreak() (Node, error) {
 
 func (p *Parser) parseStatements() ([]Node, error) {
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("statement: expected (, got %s (%s)", p.curr, p.curr.Pos())
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 
@@ -380,7 +383,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 		case Keyword:
 			parse, ok := p.stmts[p.curr.Literal]
 			if !ok {
-				return nil, fmt.Errorf("statement: unexpected keyword %s (%s)", p.curr, p.curr.Pos())
+				return nil, p.unexpectedError()
 			}
 			p.pushBlock(p.curr.Literal)
 			node, err = parse()
@@ -405,7 +408,7 @@ func (p *Parser) parseStatements() ([]Node, error) {
 			}
 			ns = append(ns, b)
 		default:
-			err = fmt.Errorf("statement: unexpected token %s (%s)", p.curr, p.curr.Pos())
+			err = p.unexpectedError()
 		}
 		if err != nil {
 			return nil, err
@@ -421,7 +424,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 	r := Repeat{pos: p.curr.Pos()}
 	p.nextToken()
 	if p.curr.Type != lsquare {
-		return nil, fmt.Errorf("repeat: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("[")
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
@@ -451,7 +454,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 	case Ident, Text:
 		r.node = Reference{id: p.curr}
 	default:
-		err = fmt.Errorf("repeat: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		err = p.unexpectedError()
 	}
 	if err == nil {
 		p.nextToken()
@@ -464,21 +467,19 @@ func (p *Parser) parseSeek() (Node, error) {
 	p.nextToken()
 	if p.curr.Type == Keyword {
 		if p.curr.Literal != kwAt {
-			return nil, fmt.Errorf("seek: expected at, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.expectedError(kwAt)
 		}
 		k.absolute = true
 		p.nextToken()
 	}
 	if p.curr.Type != lsquare {
-		return nil, fmt.Errorf("seek: expected [, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("[")
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
 	}
-	// if !p.curr.isNumber() {
-	// 	return nil, fmt.Errorf("seek: expected number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
-	// }
+
 	k.offset = expr
 	p.nextToken()
 	return k, nil
@@ -502,7 +503,7 @@ func (p *Parser) parseDel() (Node, error) {
 			break
 		}
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("del: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.expectedError("ident")
 		}
 		d.nodes = append(d.nodes, Reference{id: p.curr})
 	}
@@ -516,7 +517,7 @@ func (p *Parser) parseData() (Node, error) {
 	var files []Token
 	for p.curr.Type != lparen {
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("data: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.expectedError("ident")
 		}
 		files = append(files, p.curr)
 		p.nextToken()
@@ -527,7 +528,6 @@ func (p *Parser) parseData() (Node, error) {
 		return nil, err
 	}
 	b.nodes = append(b.nodes, ns...)
-	// return b, nil
 	return Data{Block: b, files: files}, nil
 }
 
@@ -583,7 +583,7 @@ func (p *Parser) parseAssign(left Expression) (Expression, error) {
 		}
 		return a, nil
 	default:
-		return nil, fmt.Errorf("assign: unexpected token")
+		return nil, p.unexpectedError()
 	}
 }
 
@@ -598,7 +598,7 @@ func (p *Parser) parseTernary(left Expression) (Expression, error) {
 	}
 	p.nextToken()
 	if p.curr.Type != colon {
-		return nil, fmt.Errorf("ternary: expected :, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError(":")
 	}
 	p.nextToken()
 	alt, err := p.parseExpression(bindLowest)
@@ -631,7 +631,7 @@ func (p *Parser) parsePrefix() (Expression, error) {
 			return nil, err
 		}
 		if p.peek.Type != rparen {
-			return nil, fmt.Errorf("expression: expected ), got %s (%s)", TokenString(p.peek), p.peek.Pos())
+			return nil, p.expectedError(")")
 		}
 		p.nextToken()
 		expr = n
@@ -640,7 +640,7 @@ func (p *Parser) parsePrefix() (Expression, error) {
 	case Ident, Internal:
 		expr = Identifier{id: p.curr}
 	default:
-		return nil, fmt.Errorf("expression: unexpected token type %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.unexpectedError()
 	}
 	return expr, nil
 }
@@ -664,11 +664,11 @@ func (p *Parser) parseExit() (Node, error) {
 	e := Exit{pos: p.curr.Pos()}
 	p.nextToken()
 	if p.curr.Type != Integer {
-		return nil, fmt.Errorf("exit: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("integer")
 	}
 	e.code = p.curr
 	if p.peek.Type != Newline {
-		return nil, fmt.Errorf("exit: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.unexpectedError()
 	}
 	p.nextToken()
 	return e, nil
@@ -679,17 +679,17 @@ func (p *Parser) parseMatch() (Node, error) {
 
 	p.nextToken()
 	if !p.curr.isIdent() {
-		return nil, fmt.Errorf("match: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("ident")
 	}
 	m.id = p.curr
 
 	p.nextToken()
 	if p.curr.Type != Keyword && p.curr.Literal != kwWith {
-		return nil, fmt.Errorf("match: expected with, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError(kwWith)
 	}
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("match: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -734,7 +734,7 @@ func (p *Parser) parseMatchCase() ([]MatchCase, bool, error) {
 		}
 
 		if p.curr.Type != Integer {
-			return nil, alt, fmt.Errorf("match: expected integer, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, alt, p.expectedError("integer")
 		}
 
 		mcs = append(mcs, MatchCase{cond: p.curr})
@@ -745,7 +745,7 @@ func (p *Parser) parseMatchCase() ([]MatchCase, bool, error) {
 	}
 
 	if p.curr.Type != Assign {
-		return nil, alt, fmt.Errorf("match: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, alt, p.expectedError("=")
 	}
 	p.nextToken()
 
@@ -771,7 +771,7 @@ func (p *Parser) parseMatchCase() ([]MatchCase, bool, error) {
 			nodes: ns,
 		}
 	default:
-		return nil, alt, fmt.Errorf("match: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, alt, p.unexpectedError()
 	}
 
 	for i := range mcs {
@@ -810,7 +810,7 @@ func (p *Parser) parseInclude() (Node, error) {
 			err = e
 		}
 	default:
-		err = fmt.Errorf("include: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		err = p.unexpectedError()
 	}
 	if err == nil {
 		p.nextToken()
@@ -834,14 +834,14 @@ func (p *Parser) parseFieldLong(id Token) (Node, error) {
 		}
 	}
 	if p.curr.Type != Keyword {
-		return nil, fmt.Errorf("field: expected keyword, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("keyword")
 	}
 	if p.curr.Literal != kwWith {
-		return nil, fmt.Errorf("field: expected with, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError(kwWith)
 	}
 	p.nextToken()
 	if !(p.curr.isIdent() || p.curr.isNumber()) {
-		return nil, fmt.Errorf("field: expected ident/number, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("ident/number")
 	}
 	a.size, lenok = p.curr, true
 	if !typok && !lenok {
@@ -854,7 +854,7 @@ func (p *Parser) parseFieldLong(id Token) (Node, error) {
 func (p *Parser) parseTypedef() (Node, error) {
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("typedef: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -868,12 +868,12 @@ func (p *Parser) parseTypedef() (Node, error) {
 			lenok bool
 		)
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("typedef: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.expectedError("ident")
 		}
 		td.label = p.curr
 		p.nextToken()
 		if p.curr.Type != Assign {
-			return nil, fmt.Errorf("typedef: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.expectedError("=")
 		}
 		p.nextToken()
 		if p.curr.Type == Keyword {
@@ -882,7 +882,7 @@ func (p *Parser) parseTypedef() (Node, error) {
 				td.kind, typok = p.curr, true
 				p.nextToken()
 			default:
-				return nil, fmt.Errorf("typedef: unexepected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+				return nil, p.unexpectedError()
 			}
 		}
 		if p.curr.Type == Integer {
@@ -893,7 +893,7 @@ func (p *Parser) parseTypedef() (Node, error) {
 			if p.curr.Literal == kwBig || p.curr.Literal == kwLittle {
 				td.endian = p.curr
 			} else {
-				return nil, fmt.Errorf("typdef: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+				return nil, p.unexpectedError()
 			}
 			p.nextToken()
 		}
@@ -918,7 +918,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 			a.kind, typok = p.curr, true
 			p.nextToken()
 		default:
-			return nil, fmt.Errorf("field: unexepected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 	} else if p.curr.Type == Ident {
 		if td, ok := p.typedef[p.curr.Literal]; ok {
@@ -926,7 +926,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 			a.size = td.size
 			a.endian = td.endian
 		} else {
-			return nil, fmt.Errorf("field: unexpected ident %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		p.nextToken()
 		return a, nil
@@ -939,7 +939,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 		if p.curr.Literal == kwBig || p.curr.Literal == kwLittle {
 			a.endian = p.curr
 		} else {
-			return nil, fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		p.nextToken()
 	}
@@ -951,7 +951,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 
 func (p *Parser) parseField() (node Node, err error) {
 	if !p.curr.isIdent() {
-		return nil, fmt.Errorf("field: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("ident")
 	}
 
 	id := p.curr
@@ -964,12 +964,12 @@ func (p *Parser) parseField() (node Node, err error) {
 		node, err = p.parseFieldShort(id)
 	case Keyword:
 		if !p.inBlock(kwData) {
-			err = fmt.Errorf("field: unexpected keyword %s (%s)", TokenString(p.curr), p.curr.Pos())
+			err = p.unexpectedError()
 			break
 		}
 		node, err = p.parseFieldLong(id)
 	default:
-		err = fmt.Errorf("field: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		err = p.unexpectedError()
 	}
 	if err != nil {
 		return
@@ -977,11 +977,19 @@ func (p *Parser) parseField() (node Node, err error) {
 	if n, ok := node.(Parameter); ok {
 		if p.curr.Type == comma {
 			p.nextToken()
-			if !p.curr.isIdent() {
-				return nil, fmt.Errorf("field: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+			switch p.curr.Type {
+			case Text, Ident:
+				n.apply = p.curr
+				p.nextToken()
+			case Keyword:
+				apply, err := p.parsePairInline(true)
+				if err != nil {
+					return nil, err
+				}
+				n.apply = apply
+			default:
+				return nil, p.expectedError("ident")
 			}
-			n.apply = p.curr
-			p.nextToken()
 		}
 		if p.curr.Type == Assign {
 			p.nextToken()
@@ -994,7 +1002,7 @@ func (p *Parser) parseField() (node Node, err error) {
 		node = n
 	}
 	if p.curr.Type != Newline {
-		return nil, fmt.Errorf("field: expected newline, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("newline")
 	}
 	return
 }
@@ -1004,7 +1012,7 @@ func (p *Parser) parseDeclare() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("declare: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -1027,17 +1035,17 @@ func (p *Parser) parseAssignment() (Node, error) {
 	}
 	p.nextToken()
 	if p.curr.Type != Assign {
-		return nil, fmt.Errorf("assignment: expected =, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("=")
 	}
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
 	}
-	switch e := expr.(type) {
+	switch expr.(type) {
 	case Unary, Literal:
 		node.value = expr
 	default:
-		return nil, fmt.Errorf("assignment: expected literal or prefix expression, got %T (%s)", e, node.Pos())
+		return nil, p.expectedError("expression")
 	}
 	return node, nil
 }
@@ -1047,7 +1055,7 @@ func (p *Parser) parseDefine() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("defined: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -1056,7 +1064,7 @@ func (p *Parser) parseDefine() (Node, error) {
 			break
 		}
 		if !p.curr.isIdent() {
-			return nil, fmt.Errorf("define: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return nil, p.unexpectedError()
 		}
 		n, err := p.parseAssignment()
 		if err != nil {
@@ -1070,7 +1078,7 @@ func (p *Parser) parseDefine() (Node, error) {
 func (p *Parser) parseImport() error {
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return fmt.Errorf("import: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return p.expectedError("(")
 	}
 	p.nextToken()
 
@@ -1081,7 +1089,7 @@ func (p *Parser) parseImport() error {
 			break
 		}
 		if !p.curr.isIdent() {
-			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return p.unexpectedError()
 		}
 		files = append(files, p.curr.Literal)
 
@@ -1092,7 +1100,7 @@ func (p *Parser) parseImport() error {
 		case Newline:
 			p.nextToken()
 		default:
-			return fmt.Errorf("import: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+			return p.unexpectedError()
 		}
 	}
 	for _, f := range files {
@@ -1109,26 +1117,10 @@ func (p *Parser) parseImport() error {
 	return p.isClosed()
 }
 
-func (p *Parser) parseFile(file string) ([]Node, error) {
-	r, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	n, err := Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	root, ok := n.(Block)
-	if !ok {
-		return nil, fmt.Errorf("%s: unexpected node type %T", filepath.Base(file), n)
-	}
-	return root.nodes, nil
-}
-
 func (p *Parser) parseBlock() (Node, error) {
 	p.nextToken()
 	if !p.curr.isIdent() {
-		return nil, fmt.Errorf("block: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil, p.unexpectedError()
 	}
 	b := emptyBlock(p.curr)
 
@@ -1142,15 +1134,25 @@ func (p *Parser) parseBlock() (Node, error) {
 }
 
 func (p *Parser) parsePair() (Node, error) {
+	return p.parsePairInline(false)
+}
+
+func (p *Parser) parsePairInline(inline bool) (Node, error) {
+	kw := p.curr.Literal
+	if !(kw == kwEnum || kw == kwPoly || kw == kwPoint) {
+		return nil, p.unexpectedError()
+	}
 	a := Pair{kind: p.curr}
 	p.nextToken()
-	if !p.curr.isIdent() {
-		return nil, fmt.Errorf("pair: unexpected token %s (%s)", TokenString(p.curr), p.curr.Pos())
+	if !inline {
+		if !p.curr.isIdent() {
+			return nil, p.unexpectedError()
+		}
+		a.id = p.curr
+		p.nextToken()
 	}
-	a.id = p.curr
-	p.nextToken()
 	if p.curr.Type != lparen {
-		return nil, fmt.Errorf("pair: expected (, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return nil,p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {
@@ -1164,7 +1166,21 @@ func (p *Parser) parsePair() (Node, error) {
 		}
 		a.nodes = append(a.nodes, n.(Constant))
 	}
-	return a, p.isClosed()
+	if err := p.isClosed(); err != nil {
+		return nil, err
+	}
+	if !inline {
+		return a, nil
+	}
+	id, err := p.parseBlockId()
+	if err == nil {
+		if !id.pos.IsValid() {
+			id.Literal = fmt.Sprintf("%s-%s", a.kind.Literal, id.Literal)
+			id.pos = a.kind.Pos()
+		}
+		a.id = id
+	}
+	return a, err
 }
 
 func (p *Parser) parseBlockId() (Token, error) {
@@ -1178,11 +1194,11 @@ func (p *Parser) parseBlockId() (Token, error) {
 		return id, nil
 	}
 	if p.curr.Literal != kwAs {
-		return Token{}, fmt.Errorf("id: expected as, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return Token{}, p.expectedError(kwAs)
 	}
 	p.nextToken()
 	if !p.curr.isIdent() {
-		return Token{}, fmt.Errorf("id: expected ident, got %s (%s)", TokenString(p.curr), p.curr.Pos())
+		return Token{}, p.expectedError("ident")
 	}
 	id = p.curr
 	p.nextToken()
@@ -1275,9 +1291,23 @@ func (p *Parser) popFrame() {
 	p.frames = p.frames[:n-1]
 }
 
+func (p *Parser) expectedError(want string) error {
+	if want == "" {
+		return p.unexpectedError()
+	}
+	where := p.currentBlock()
+	return fmt.Errorf("%s:%s: expected %s, got %s", p.curr.Pos(), where, want, TokenString(p.curr))
+}
+
+func (p *Parser) unexpectedError() error {
+	where := p.currentBlock()
+	return fmt.Errorf("%s:%s: %w %s", p.curr.Pos(), where, ErrUnexpected, TokenString(p.curr))
+}
+
 type frame struct {
 	file string
 	curr Token
+	peek Token
 	*Scanner
 }
 
