@@ -45,6 +45,12 @@ const numbit = 8
 // 	}
 // }
 //
+// func WithInclude(files []string) Option {
+// 	return func(i *Interpreter) error {
+// 		return nil
+// 	}
+// }
+//
 // type Interpreter struct {
 // 	stdout  io.Writer
 // 	stderr  io.Writer
