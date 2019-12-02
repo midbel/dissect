@@ -429,12 +429,21 @@ func (r Reference) Pos() Position {
 }
 
 type MatchCase struct {
-	cond Token
+	// cond Token
+	cond Expression
 	node Node
 }
 
+func (m MatchCase) isDefault() bool {
+	return m.cond == nil
+}
+
 func (m MatchCase) Pos() Position {
-	return m.cond.Pos()
+	if m.cond == nil {
+		return Position{}
+	}
+	n := m.cond.exprNode()
+	return n.Pos()
 }
 
 func (m MatchCase) String() string {
@@ -442,8 +451,9 @@ func (m MatchCase) String() string {
 }
 
 type Match struct {
-	pos   Position
-	id    Token
+	pos Position
+	// id    Token
+	expr  Expression
 	nodes []MatchCase
 	alt   MatchCase
 }
@@ -453,7 +463,7 @@ func (m Match) Pos() Position {
 }
 
 func (m Match) String() string {
-	return fmt.Sprintf("match(%s)", m.id)
+	return fmt.Sprintf("match(%s)", m.expr)
 }
 
 type Repeat struct {
@@ -581,7 +591,7 @@ func (b Block) ResolveParameter(param string) (Parameter, error) {
 			return p, nil
 		}
 	}
-	return Parameter{}, fmt.Errorf("%s: parameter not defined")
+	return Parameter{}, fmt.Errorf("%s: parameter not defined", param)
 }
 
 func (b Block) ResolveConstant(cst string) (Constant, error) {

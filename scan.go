@@ -153,7 +153,7 @@ func (s *Scanner) scanNumber(tok *Token) {
 
 			accept = isHexa
 			nodot = true
-		case dot, newline, comma, rsquare, rparen, space, tab, EOF:
+		case dot, newline, comma, rsquare, rparen, space, tab, colon, EOF:
 		default:
 			tok.Type = Illegal
 			return

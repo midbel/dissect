@@ -328,6 +328,7 @@ func (p *Parser) parseContinue() (Node, error) {
 	if p.curr.Type != lsquare {
 		return nil, p.expectedError("[")
 	}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -351,6 +352,7 @@ func (p *Parser) parseBreak() (Node, error) {
 	if p.curr.Type != lsquare {
 		return nil, p.expectedError("[")
 	}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -426,6 +428,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 	if p.curr.Type != lsquare {
 		return nil, p.expectedError("[")
 	}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -470,6 +473,7 @@ func (p *Parser) parseSeek() (Node, error) {
 	if p.curr.Type != lsquare {
 		return nil, p.expectedError("[")
 	}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -527,9 +531,9 @@ func (p *Parser) parseData() (Node, error) {
 }
 
 func (p *Parser) parsePredicate() (Expression, error) {
-	p.nextToken()
+	// p.nextToken()
 	expr, err := p.parseExpression(bindLowest)
-	if err == nil {
+	if err == nil && p.peek.Type != colon {
 		p.nextToken()
 	}
 	return expr, err
@@ -540,10 +544,10 @@ func (p *Parser) parseExpression(pow int) (Expression, error) {
 	if err != nil {
 		return nil, err
 	}
-	checkPeek := func(peek Token) bool {
-		return peek.Type == rsquare || peek.Type == Newline || peek.Type == Comment
+	checkPeek := func(peek rune) bool {
+		return peek == rsquare || peek == Newline || peek == Comment || peek == colon
 	}
-	for !checkPeek(p.peek) && pow < bindPower(p.peek) {
+	for !checkPeek(p.peek.Type) && pow < bindPower(p.peek) {
 		p.nextToken()
 		switch p.curr.Type {
 		case Cond:
@@ -670,15 +674,17 @@ func (p *Parser) parseExit() (Node, error) {
 }
 
 func (p *Parser) parseMatch() (Node, error) {
-	m := Match{pos: p.curr.Pos()}
+	var (
+		comma bool
+		match = Match{pos: p.curr.Pos()}
+	)
 
 	p.nextToken()
-	if !p.curr.isIdent() {
-		return nil, p.expectedError("ident")
+	if p.curr.isIdent() {
+		match.expr, comma = Identifier{id: p.curr}, true
+		p.nextToken()
 	}
-	m.id = p.curr
 
-	p.nextToken()
 	if p.curr.Type != Keyword && p.curr.Literal != kwWith {
 		return nil, p.expectedError(kwWith)
 	}
@@ -693,54 +699,57 @@ func (p *Parser) parseMatch() (Node, error) {
 			break
 		}
 
-		mcs, alt, err := p.parseMatchCase()
+		mcs, alt, err := p.parseMatchCase(!comma)
 		if err != nil {
 			return nil, err
 		}
 		if alt {
-			if pos := m.alt.Pos(); pos.IsValid() {
+			if pos := match.alt.Pos(); pos.IsValid() {
 				return nil, fmt.Errorf("match: default case already set (%s)", pos)
 			}
-			m.alt = mcs[0]
+			match.alt = mcs[0]
 		} else {
-			m.nodes = append(m.nodes, mcs...)
+			match.nodes = append(match.nodes, mcs...)
 		}
 	}
 	p.nextToken()
-	return m, nil
+	return match, nil
 }
 
-func (p *Parser) parseMatchCase() ([]MatchCase, bool, error) {
+func (p *Parser) parseMatchCase(nocomma bool) ([]MatchCase, bool, error) {
 	var (
 		mcs []MatchCase
 		alt bool
 	)
 	for !p.isDone() {
-		if p.curr.Type == Assign {
+		if p.curr.Type == colon {
 			break
 		}
 		if p.curr.Type == underscore {
 			if len(mcs) > 0 {
 				return nil, alt, fmt.Errorf("match: default case should be alone %s (%s)", TokenString(p.curr), p.curr.Pos())
 			}
-			mcs, alt = append(mcs, MatchCase{cond: p.curr}), true
+			mcs, alt = append(mcs, MatchCase{}), true
 			p.nextToken()
 			break
 		}
-
-		if p.curr.Type != Integer {
-			return nil, alt, p.expectedError("integer")
+		expr, err := p.parsePredicate()
+		if err != nil {
+			return nil, alt, err
 		}
 
-		mcs = append(mcs, MatchCase{cond: p.curr})
+		mcs = append(mcs, MatchCase{cond: expr})
 		p.nextToken()
 		if p.curr.Type == comma {
+			if nocomma {
+				return nil, alt, p.unexpectedError()
+			}
 			p.nextToken()
 		}
 	}
 
-	if p.curr.Type != Assign {
-		return nil, alt, p.expectedError("=")
+	if p.curr.Type != colon {
+		return nil, alt, p.expectedError(":")
 	}
 	p.nextToken()
 
@@ -781,6 +790,7 @@ func (p *Parser) parseInclude() (Node, error) {
 
 	p.nextToken()
 	if p.curr.Type == lsquare {
+		p.nextToken()
 		expr, err := p.parsePredicate()
 		if err != nil {
 			return nil, err
@@ -988,6 +998,7 @@ func (p *Parser) parseField() (node Node, err error) {
 		}
 		if p.curr.Type == Assign {
 			p.nextToken()
+			p.nextToken()
 			expr, err := p.parsePredicate()
 			if err != nil {
 				return nil, err
@@ -1032,6 +1043,7 @@ func (p *Parser) parseAssignment() (Node, error) {
 	if p.curr.Type != Assign {
 		return nil, p.expectedError("=")
 	}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -1147,7 +1159,7 @@ func (p *Parser) parsePairInline(inline bool) (Node, error) {
 		p.nextToken()
 	}
 	if p.curr.Type != lparen {
-		return nil,p.expectedError("(")
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 	for !p.isDone() {

@@ -139,7 +139,7 @@ func (root *state) reset() {
 
 func (root *state) growBuffer(bits int) error {
 	pos := (root.Pos + bits) / numbit
-	if n := len(root.buffer); (bits > 0 && pos < n) {
+	if n := len(root.buffer); bits > 0 && pos < n {
 		return nil
 	}
 
@@ -576,35 +576,17 @@ func (root *state) decodeExit(e Exit) error {
 }
 
 func (root *state) decodeMatch(n Match) error {
-	v, err := root.ResolveValue(n.id.Literal)
+	var (
+		node Node
+		err  error
+	)
+	if n.expr == nil {
+		node, err = root.matchExpr(n)
+	} else {
+		node, err = root.matchIdent(n)
+	}
 	if err != nil {
 		return err
-	}
-	var (
-		cdt  = asInt(v)
-		node Node
-	)
-	for _, c := range n.nodes {
-		var raw int64
-		switch c.cond.Type {
-		case Integer:
-			raw, _ = strconv.ParseInt(c.cond.Literal, 0, 64)
-		case Float:
-			f, _ := strconv.ParseFloat(c.cond.Literal, 64)
-			raw = int64(f)
-		case Ident, Text:
-			v, err := root.ResolveValue(c.cond.Literal)
-			if err != nil {
-				return err
-			}
-			raw = asInt(v)
-		default:
-			return fmt.Errorf("unsupported type: %s", TokenString(c.cond))
-		}
-		if cdt == raw {
-			node = c.node
-			break
-		}
 	}
 
 	if node == nil {
@@ -627,6 +609,36 @@ func (root *state) decodeMatch(n Match) error {
 		err = root.decodeBlock(dat)
 	}
 	return err
+}
+
+func (root *state) matchIdent(n Match) (Node, error) {
+	e, err := eval(n.expr, root)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range n.nodes {
+		r, err := eval(c.cond, root)
+		if err != nil {
+			return nil, err
+		}
+		if e.Cmp(r) == 0 {
+			return c.node, nil
+		}
+	}
+	return nil, nil
+}
+
+func (root *state) matchExpr(n Match) (Node, error) {
+	for _, c := range n.nodes {
+		e, err := eval(c.cond, root)
+		if err != nil {
+			return nil, err
+		}
+		if isTrue(e) {
+			return c.node, nil
+		}
+	}
+	return nil, nil
 }
 
 func (root *state) decodeContinue(n Continue) error {
@@ -673,8 +685,8 @@ func (root *state) decodeSeek(n Seek) error {
 
 func (root *state) decodeRepeat(n Repeat) error {
 	var (
-		dat    Block
-		err    error
+		dat Block
+		err error
 	)
 	switch n := n.node.(type) {
 	case Block:
