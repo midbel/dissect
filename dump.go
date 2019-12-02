@@ -67,6 +67,18 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%s)", indent)
 	case Seek:
 		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset, n.Pos())
+	case If:
+		fmt.Printf("%sif(expr=%s, pos=%s)", indent, n.expr, n.Pos())
+		if n.csq != nil {
+			fmt.Print(" (\n")
+			dumpNode(n.csq, level+1)
+			fmt.Printf("%s)", indent)
+		}
+		if n.alt != nil {
+			fmt.Print(" else (\n")
+			dumpNode(n.alt, level+1)
+			fmt.Printf("%s)", indent)
+		}
 	case Match:
 		expr := "???"
 		if n.expr != nil {
@@ -113,7 +125,7 @@ func dumpNode(n Node, level int) error {
 		dumpNode(n.node, level+1)
 		fmt.Printf("%s)", indent)
 	case Reference:
-		fmt.Printf("%sreference(name=%s, pos=%s)", indent, n.id.Literal, n.Pos())
+		fmt.Printf("%sreference(name=%s, alias=%s, pos=%s)", indent, n.alias, n.id, n.Pos())
 	case Parameter:
 		fmt.Printf("%sparameter(name=%s, type=%s, size=%s, pos=%s)", indent, n.id.Literal, n.kind.Literal, n.size.Literal, n.Pos())
 		if p, ok := n.apply.(Pair); ok {

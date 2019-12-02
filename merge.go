@@ -45,6 +45,8 @@ func mergeBlock(dat, root Block) (Node, error) {
 			nx, err = mergeRepeat(x, root)
 		case Match:
 			nx, err = mergeMatch(x, root)
+		case If:
+			nx, err = mergeIf(x, root)
 		case Reference:
 			p, e := root.ResolveParameter(x.id.Literal)
 			if e == nil {
@@ -75,6 +77,17 @@ func mergeParameter(p Parameter, root Block) (Node, error) {
 		p.apply = pair
 	}
 	return p, err
+}
+
+func mergeIf(i If, root Block) (Node, error) {
+	var err error
+	if i.csq != nil {
+		i.csq, err = mergeNode(i.csq, root)
+	}
+	if i.alt != nil {
+		i.alt, err = mergeNode(i.alt, root)
+	}
+	return i, err
 }
 
 func mergeInclude(i Include, root Block) (Node, error) {
@@ -127,6 +140,9 @@ func mergeNode(node Node, root Block) (Node, error) {
 			return nil, err
 		}
 		dat = b
+		if n.alias.Pos().IsValid() {
+			dat.id = n.alias
+		}
 	}
 	return mergeBlock(dat, root)
 }

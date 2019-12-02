@@ -160,6 +160,8 @@ const (
 	kwTo       = "to"
 	kwBig      = "big"
 	kwLittle   = "little"
+	kwIf       = "if"
+	kwElse     = "else"
 )
 
 var keywords = []string{
@@ -194,6 +196,8 @@ var keywords = []string{
 	kwTo,
 	kwBig,
 	kwLittle,
+	kwIf,
+	kwElse,
 }
 
 type Expression interface {

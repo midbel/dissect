@@ -417,7 +417,8 @@ func (p Parameter) is() Kind {
 }
 
 type Reference struct {
-	id Token
+	id    Token
+	alias Token
 }
 
 func (r Reference) String() string {
@@ -451,8 +452,7 @@ func (m MatchCase) String() string {
 }
 
 type Match struct {
-	pos Position
-	// id    Token
+	pos   Position
 	expr  Expression
 	nodes []MatchCase
 	alt   MatchCase
@@ -464,6 +464,21 @@ func (m Match) Pos() Position {
 
 func (m Match) String() string {
 	return fmt.Sprintf("match(%s)", m.expr)
+}
+
+type If struct {
+	pos  Position
+	expr Expression
+	csq  Node
+	alt  Node
+}
+
+func (i If) Pos() Position {
+	return i.pos
+}
+
+func (i If) String() string {
+	return i.expr.String()
 }
 
 type Repeat struct {

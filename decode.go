@@ -298,6 +298,10 @@ func (root *state) decodeBlock(data Block) error {
 			if err := root.decodeSeek(n); err != nil {
 				return err
 			}
+		case If:
+			if err := root.decodeIf(n); err != nil {
+				return err
+			}
 		case Repeat:
 			if err := root.decodeRepeat(n); err != nil {
 				return err
@@ -573,6 +577,33 @@ func (root *state) decodeExit(e Exit) error {
 		return fmt.Errorf("unexpected token type")
 	}
 	return &ExitError{code}
+}
+
+func (root *state) decodeIf(i If) error {
+	e, err := eval(i.expr, root)
+	if err != nil {
+		return err
+	}
+	var node Node
+	if isTrue(e) {
+		node = i.csq
+	} else {
+		node = i.alt
+	}
+
+	var dat Block
+	switch n := node.(type) {
+	case Reference:
+		dat, err = root.ResolveBlock(n.id.Literal)
+	case Block:
+		dat = n
+	default:
+		return fmt.Errorf("unexpected node type %T", n)
+	}
+	if err == nil {
+		err = root.decodeBlock(dat)
+	}
+	return err
 }
 
 func (root *state) decodeMatch(n Match) error {

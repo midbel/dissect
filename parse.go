@@ -95,6 +95,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwContinue: p.parseContinue,
 		kwPrint:    p.parsePrint,
 		kwEcho:     p.parseEcho,
+		kwIf:       p.parseIf,
 	}
 	p.typedef = make(map[string]typedef)
 	if err := p.pushFrame(r); err != nil {
@@ -422,6 +423,74 @@ func (p *Parser) parseStatements() ([]Node, error) {
 	return ns, p.isClosed()
 }
 
+func (p *Parser) parseIf() (Node, error) {
+	i := If{pos: p.curr.Pos()}
+	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil, p.expectedError("[")
+	}
+	p.nextToken()
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	i.expr = expr
+	n, err := p.parseBody()
+	if err != nil {
+		return nil, err
+	}
+	i.csq = n
+
+	if p.curr.Type == Keyword {
+		if p.curr.Literal != kwElse {
+			return nil, p.expectedError(kwElse)
+		}
+		p.nextToken()
+		if p.curr.Literal == kwIf {
+			node, err := p.parseIf()
+			if err != nil {
+				return nil, err
+			}
+			i.alt = node
+		} else {
+			n, err := p.parseBody()
+			if err != nil {
+				return nil, err
+			}
+			i.alt = n
+		}
+	}
+	return i, nil
+}
+
+func (p *Parser) parseBody() (Node, error) {
+	var node Node
+	switch pos := p.curr.Pos(); p.curr.Type {
+	case lparen:
+		ns, err := p.parseStatements()
+		if err != nil {
+			return nil, err
+		}
+		id, err := p.parseBlockId()
+		if err != nil {
+			return nil, err
+		}
+		if !id.pos.IsValid() {
+			id.pos = pos
+		}
+		node = Block{id: id, nodes: ns}
+	case Ident, Text:
+		n, err := p.parseReference()
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	default:
+		return nil, p.unexpectedError()
+	}
+	return node, nil
+}
+
 func (p *Parser) parseRepeat() (Node, error) {
 	r := Repeat{pos: p.curr.Pos()}
 	p.nextToken()
@@ -450,7 +519,7 @@ func (p *Parser) parseRepeat() (Node, error) {
 			err = e
 		}
 	case Ident, Text:
-		r.node = Reference{id: p.curr}
+		r.node, err = p.parseReference()
 	default:
 		err = p.unexpectedError()
 	}
@@ -756,7 +825,11 @@ func (p *Parser) parseMatchCase(nocomma bool) ([]MatchCase, bool, error) {
 	var node Node
 	switch pos := p.curr.Pos(); p.curr.Type {
 	case Ident, Text:
-		node = Reference{id: p.curr}
+		ref, err := p.parseReference()
+		if err != nil {
+			return nil, alt, err
+		}
+		node = ref
 		p.nextToken()
 	case lparen:
 		ns, err := p.parseStatements()
@@ -800,7 +873,7 @@ func (p *Parser) parseInclude() (Node, error) {
 	var err error
 	switch pos := i.Pos(); p.curr.Type {
 	case Ident, Text:
-		i.node = Reference{id: p.curr}
+		i.node, err = p.parseReference()
 	case lparen:
 		if ns, e := p.parseStatements(); e == nil {
 			id, err := p.parseBlockId()
@@ -1190,25 +1263,36 @@ func (p *Parser) parsePairInline(inline bool) (Node, error) {
 	return a, err
 }
 
+func (p *Parser) parseReference() (Node, error) {
+	ref := Reference{id: p.curr, alias: p.curr}
+	if p.peek.Type == Keyword {
+		p.nextToken()
+		if p.curr.Literal != kwAs {
+			return nil, p.expectedError(kwAs)
+		}
+		p.nextToken()
+		ref.alias = p.curr
+		p.nextToken()
+	}
+	return ref, nil
+}
+
 func (p *Parser) parseBlockId() (Token, error) {
 	var id Token
-	if p.curr.Type != Keyword {
+	if p.curr.Type == Keyword && p.curr.Literal == kwAs {
+		p.nextToken()
+		if !p.curr.isIdent() {
+			return Token{}, p.expectedError("ident")
+		}
+		id = p.curr
+		p.nextToken()
+	} else {
 		id = Token{
 			Literal: fmt.Sprintf("%s-%d", kwInline, p.inline),
 			Type:    Keyword,
 		}
 		p.inline++
-		return id, nil
 	}
-	if p.curr.Literal != kwAs {
-		return Token{}, p.expectedError(kwAs)
-	}
-	p.nextToken()
-	if !p.curr.isIdent() {
-		return Token{}, p.expectedError("ident")
-	}
-	id = p.curr
-	p.nextToken()
 	return id, nil
 }
 
@@ -1337,7 +1421,7 @@ func (p *Parser) expectedError(want string) error {
 	if f := p.currentFrame(); f != nil {
 		file = f.file
 	}
-	return fmt.Errorf("%s:%s(%s): expected %s, got %s", p.curr.Pos(), where, file, want, TokenString(p.curr))
+	return fmt.Errorf("(%s) %s(%s): expected %s, got %s", p.curr.Pos(), where, file, want, TokenString(p.curr))
 }
 
 func (p *Parser) unexpectedError() error {
@@ -1348,7 +1432,7 @@ func (p *Parser) unexpectedError() error {
 	if f := p.currentFrame(); f != nil {
 		file = f.file
 	}
-	return fmt.Errorf("%s:%s(%s): %w %s", p.curr.Pos(), where, file, ErrUnexpected, TokenString(p.curr))
+	return fmt.Errorf("(%s) %s(%s): %w %s", p.curr.Pos(), where, file, ErrUnexpected, TokenString(p.curr))
 }
 
 type frame struct {
