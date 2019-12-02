@@ -486,6 +486,7 @@ func (p *Parser) parseSeek() (Node, error) {
 
 func (p *Parser) parseLet() (Node, error) {
 	n := Let{id: p.peek}
+	p.nextToken()
 	expr, err := p.parsePredicate()
 	if err != nil {
 		return nil, err
@@ -531,7 +532,6 @@ func (p *Parser) parseData() (Node, error) {
 }
 
 func (p *Parser) parsePredicate() (Expression, error) {
-	// p.nextToken()
 	expr, err := p.parseExpression(bindLowest)
 	if err == nil && p.peek.Type != colon {
 		p.nextToken()
@@ -1089,14 +1089,14 @@ func (p *Parser) parseImport() error {
 	}
 	p.nextToken()
 
-	var files []string
+	files := make([]string, 0, 64)
 	for !p.isDone() {
 		p.skipComment()
 		if p.curr.Type == rparen {
 			break
 		}
 		if !p.curr.isIdent() {
-			return p.unexpectedError()
+			return p.expectedError("ident")
 		}
 		files = append(files, p.curr.Literal)
 
@@ -1110,8 +1110,8 @@ func (p *Parser) parseImport() error {
 			return p.unexpectedError()
 		}
 	}
-	for _, f := range files {
-		r, err := os.Open(f)
+	for i := 0; i < len(files); i++ {
+		r, err := os.Open(files[i])
 		if err != nil {
 			return err
 		}
@@ -1274,15 +1274,13 @@ func (p *Parser) nextToken() {
 
 func (p *Parser) pushFrame(r io.Reader) error {
 	s, err := Scan(r)
-
-	file := "<input>"
-	if n, ok := r.(interface{ Name() string }); ok {
-		file = n.Name()
-	}
 	if err == nil {
 		f := &frame{
-			file:    file,
+			file:    "<input>",
 			Scanner: s,
+		}
+		if n, ok := r.(interface{ Name() string }); ok {
+			f.file = n.Name()
 		}
 		f.Scan()
 		p.frames = append(p.frames, f)
@@ -1298,24 +1296,67 @@ func (p *Parser) popFrame() {
 	p.frames = p.frames[:n-1]
 }
 
+func (p *Parser) currentToken() Token {
+	var (
+		frm = p.currentFrame()
+		tok Token
+	)
+	if frm != nil {
+		tok = frm.curr
+	}
+	return tok
+}
+
+func (p *Parser) peekToken() Token {
+	var (
+		frm = p.currentFrame()
+		tok Token
+	)
+	if frm != nil {
+		tok = frm.peek
+	}
+	return tok
+}
+
+func (p *Parser) currentFrame() *frame {
+	n := len(p.frames)
+	if n == 0 {
+		return nil
+	}
+	return p.frames[n-1]
+}
+
 func (p *Parser) expectedError(want string) error {
 	if want == "" {
 		return p.unexpectedError()
 	}
-	where := p.currentBlock()
-	return fmt.Errorf("%s:%s: expected %s, got %s", p.curr.Pos(), where, want, TokenString(p.curr))
+	var (
+		file  = "<input>"
+		where = p.currentBlock()
+	)
+	if f := p.currentFrame(); f != nil {
+		file = f.file
+	}
+	return fmt.Errorf("%s:%s(%s): expected %s, got %s", p.curr.Pos(), where, file, want, TokenString(p.curr))
 }
 
 func (p *Parser) unexpectedError() error {
-	where := p.currentBlock()
-	return fmt.Errorf("%s:%s: %w %s", p.curr.Pos(), where, ErrUnexpected, TokenString(p.curr))
+	var (
+		file  = "<input>"
+		where = p.currentBlock()
+	)
+	if f := p.currentFrame(); f != nil {
+		file = f.file
+	}
+	return fmt.Errorf("%s:%s(%s): %w %s", p.curr.Pos(), where, file, ErrUnexpected, TokenString(p.curr))
 }
 
 type frame struct {
+	*Scanner
 	file string
+
 	curr Token
 	peek Token
-	*Scanner
 }
 
 func (f *frame) Scan() Token {
