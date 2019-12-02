@@ -714,16 +714,33 @@ func (p *Parser) parsePrefix() (Expression, error) {
 }
 
 func (p *Parser) parseInfix(left Expression) (Expression, error) {
+	isComparison := func(op rune) bool {
+		return op == Lesser || op == Greater || op == LessEq || op == GreatEq
+	}
 	expr := Binary{
 		Left:     left,
 		operator: p.curr.Type,
 	}
-	pow := bindPower(p.curr)
+	var (
+		op  = p.curr
+		pow = bindPower(p.curr)
+	)
 	p.nextToken()
 
 	right, err := p.parseExpression(pow)
 	if err == nil {
 		expr.Right = right
+	}
+	if isComparison(op.Type) && isComparison(p.peek.Type) {
+		p.nextToken()
+		if right, err = p.parseInfix(right); err != nil {
+			return nil, err
+		}
+		expr = Binary{
+			Left:     expr,
+			Right:    right,
+			operator: And,
+		}
 	}
 	return expr, err
 }
@@ -1041,10 +1058,6 @@ func (p *Parser) parseField() (node Node, err error) {
 	case colon:
 		node, err = p.parseFieldShort(id)
 	case Keyword:
-		if !p.inBlock(kwData) {
-			err = p.unexpectedError()
-			break
-		}
 		node, err = p.parseFieldLong(id)
 	default:
 		err = p.unexpectedError()
