@@ -85,7 +85,11 @@ func mergeIf(i If, root Block) (Node, error) {
 		i.csq, err = mergeNode(i.csq, root)
 	}
 	if i.alt != nil {
-		i.alt, err = mergeNode(i.alt, root)
+		if i, ok := i.alt.(If); ok {
+			i.alt, err = mergeIf(i, root)
+		} else {
+			i.alt, err = mergeNode(i.alt, root)
+		}
 	}
 	return i, err
 }
