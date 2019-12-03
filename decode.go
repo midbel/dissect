@@ -344,7 +344,7 @@ func (root *state) decodeBlock(data Block) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("unexpected node type %T", n)
+			return fmt.Errorf("decoding block: unexpected node type %T", n)
 		}
 	}
 	return nil
@@ -594,7 +594,9 @@ func (root *state) decodeIf(i If) error {
 	} else {
 		node = i.alt
 	}
-
+	if node == nil {
+		return nil
+	}
 	var dat Block
 	switch n := node.(type) {
 	case Reference:
@@ -602,7 +604,7 @@ func (root *state) decodeIf(i If) error {
 	case Block:
 		dat = n
 	default:
-		return fmt.Errorf("unexpected node type %T", n)
+		return fmt.Errorf("decoding if: unexpected node type %T", n)
 	}
 	if err == nil {
 		err = root.decodeBlock(dat)
@@ -638,7 +640,7 @@ func (root *state) decodeMatch(n Match) error {
 	case Block:
 		dat = n
 	default:
-		return fmt.Errorf("unexpected node type %T", n)
+		return fmt.Errorf("decoding match: unexpected node type %T", n)
 	}
 	if err == nil {
 		err = root.decodeBlock(dat)
