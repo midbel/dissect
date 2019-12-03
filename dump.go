@@ -67,6 +67,8 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%s)", indent)
 	case Seek:
 		fmt.Printf("%sseek(offset=%s, pos=%s)", indent, n.offset, n.Pos())
+	case Peek:
+		fmt.Printf("%speek(count=%s, pos=%s)", indent, n.count, n.Pos())
 	case If:
 		fmt.Printf("%sif(expr=%s, pos=%s)", indent, n.expr, n.Pos())
 		if n.csq != nil {

@@ -344,6 +344,19 @@ func (e Exit) Pos() Position {
 	return e.pos
 }
 
+type Peek struct {
+	pos   Position
+	count Expression
+}
+
+func (p Peek) Pos() Position {
+	return p.pos
+}
+
+func (p Peek) String() string {
+	return fmt.Sprintf("peek(%s)", p.count)
+}
+
 type Seek struct {
 	pos      Position
 	offset   Expression

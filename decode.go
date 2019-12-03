@@ -107,7 +107,7 @@ func (root *state) Run(r io.Reader) error {
 			if errors.Is(err, ErrDone) {
 				break
 			}
-			return err
+			return fmt.Errorf("%s: %w", root.path(), err)
 		}
 		root.Loop++
 		root.reset()
@@ -293,6 +293,10 @@ func (root *state) decodeBlock(data Block) error {
 					continue
 				}
 				root.DeleteValue(r.id.Literal)
+			}
+		case Peek:
+			if err := root.decodePeek(n); err != nil {
+				return err
 			}
 		case Seek:
 			if err := root.decodeSeek(n); err != nil {
@@ -692,6 +696,14 @@ func (root *state) decodeBreak(n Break) error {
 		err = errBreak
 	}
 	return err
+}
+
+func (root *state) decodePeek(n Peek) error {
+	v, err := eval(n.count, root)
+	if err != nil {
+		return err
+	}
+	return root.growBuffer(int(asInt(v)))
 }
 
 func (root *state) decodeSeek(n Seek) error {

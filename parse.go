@@ -88,6 +88,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwLet:      p.parseLet,
 		kwDel:      p.parseDel,
 		kwSeek:     p.parseSeek,
+		kwPeek:     p.parsePeek,
 		kwRepeat:   p.parseRepeat,
 		kwExit:     p.parseExit,
 		kwMatch:    p.parseMatch,
@@ -527,6 +528,22 @@ func (p *Parser) parseRepeat() (Node, error) {
 		p.nextToken()
 	}
 	return r, err
+}
+
+func (p *Parser) parsePeek() (Node, error) {
+	k := Peek{pos: p.curr.Pos()}
+	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil, p.expectedError("[")
+	}
+	p.nextToken()
+	expr, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	k.count = expr
+	p.nextToken()
+	return k, nil
 }
 
 func (p *Parser) parseSeek() (Node, error) {

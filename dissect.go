@@ -144,6 +144,7 @@ const (
 	kwLet      = "let"
 	kwDel      = "del"
 	kwSeek     = "seek"
+	kwPeek     = "peek"
 	kwTrue     = "true"
 	kwFalse    = "false"
 	kwAno      = "anonymous"
@@ -182,6 +183,7 @@ var keywords = []string{
 	kwLet,
 	kwDel,
 	kwSeek,
+	kwPeek,
 	kwRepeat,
 	kwExit,
 	kwInt,
