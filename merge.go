@@ -14,8 +14,8 @@ func Merge(r io.Reader) (Node, error) {
 	if !ok {
 		return nil, fmt.Errorf("root node is not a block")
 	}
-	for _, a := range root.GetAlias() {
-		n, err := mergeAlias(a, root)
+	for _, r := range root.GetReferences() {
+		n, err := mergeAlias(r, root)
 		if err != nil {
 			return nil, err
 		}
@@ -93,12 +93,12 @@ func mergeParameter(p Parameter, root Block) (Node, error) {
 	return p, err
 }
 
-func mergeAlias(a Alias, root Block) (Node, error) {
-	dat, err := root.ResolveBlock(a.alias.Literal)
+func mergeAlias(r Reference, root Block) (Node, error) {
+	dat, err := root.ResolveBlock(r.alias.Literal)
 	if err != nil {
 		return nil, err
 	}
-	dat.id = a.id
+	dat.id = r.id
 	return mergeBlock(dat, root)
 }
 

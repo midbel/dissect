@@ -272,19 +272,40 @@ func (root *state) decodeBlock(data Block) error {
 	var err error
 	switch n := data.pre.(type) {
 	case Block:
-		err = root.decodeBlock(n)
+		err = root.decodeNodes(n.nodes)
 	case Reference:
 		p, err := root.ResolveBlock(n.id.Literal)
 		if err != nil {
 			return err
 		}
-		err = root.decodeBlock(p)
+		err = root.decodeNodes(p.nodes)
 	}
 	if err != nil {
 		return err
 	}
 
-	for _, n := range data.nodes {
+	if err := root.decodeNodes(data.nodes); err != nil {
+		return err
+	}
+
+	switch n := data.post.(type) {
+	case Block:
+		err = root.decodeNodes(n.nodes)
+	case Reference:
+		p, err := root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return err
+		}
+		err = root.decodeNodes(p.nodes)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (root *state) decodeNodes(nodes []Node) error {
+	for _, n := range nodes {
 		switch n := n.(type) {
 		case Break:
 			return root.decodeBreak(n)
@@ -368,20 +389,6 @@ func (root *state) decodeBlock(data Block) error {
 		default:
 			return fmt.Errorf("decoding block: unexpected node type %T", n)
 		}
-	}
-
-	switch n := data.post.(type) {
-	case Block:
-		err = root.decodeBlock(n)
-	case Reference:
-		p, err := root.ResolveBlock(n.id.Literal)
-		if err != nil {
-			return err
-		}
-		err = root.decodeBlock(p)
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -639,6 +646,8 @@ func (root *state) decodeIf(i If) error {
 		dat, err = root.ResolveBlock(n.id.Literal)
 	case Block:
 		dat = n
+	case If:
+		return root.decodeIf(n)
 	default:
 		return fmt.Errorf("decoding if: unexpected node type %T", n)
 	}

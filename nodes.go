@@ -296,7 +296,7 @@ func (p Print) Pos() Position {
 }
 
 func (p Print) String() string {
-	return p.file.Literal
+	return fmt.Sprintf("print(%s)", p.file.Literal)
 }
 
 type Continue struct {
@@ -429,19 +429,6 @@ func (p Parameter) is() Kind {
 	}
 }
 
-type Alias struct {
-	id    Token
-	alias Token
-}
-
-func (a Alias) String() string {
-	return a.id.Literal
-}
-
-func (a Alias) Pos() Position {
-	return a.id.pos
-}
-
 type Reference struct {
 	id    Token
 	alias Token
@@ -504,7 +491,7 @@ func (i If) Pos() Position {
 }
 
 func (i If) String() string {
-	return i.expr.String()
+	return fmt.Sprintf("if(%s)", i.expr.String())
 }
 
 type Repeat struct {
@@ -608,10 +595,10 @@ func (b Block) ResolveData() (Data, error) {
 	return Data{}, fmt.Errorf("data block not found")
 }
 
-func (b Block) GetAlias() []Alias {
-	as := make([]Alias, 0, len(b.nodes))
+func (b Block) GetReferences() []Reference {
+	as := make([]Reference, 0, len(b.nodes))
 	for _, n := range b.nodes {
-		if a, ok := n.(Alias); ok {
+		if a, ok := n.(Reference); ok {
 			as = append(as, a)
 		}
 	}

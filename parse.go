@@ -156,10 +156,11 @@ func (p *Parser) isClosed() error {
 }
 
 func (p *Parser) parseAlias() (Node, error) {
+	p.nextToken()
 	if !p.curr.isIdent() {
 		return nil, p.expectedError("ident")
 	}
-	a := Alias{id: p.curr}
+	r := Reference{id: p.curr}
 	p.nextToken()
 	if p.curr.Type != Assign {
 		return nil, p.expectedError("=")
@@ -168,9 +169,9 @@ func (p *Parser) parseAlias() (Node, error) {
 	if !p.curr.isIdent() {
 		return nil, p.expectedError("ident")
 	}
-	a.alias = p.curr
+	r.alias = p.curr
 	p.nextToken()
-	return a, nil
+	return r, nil
 }
 
 func (p *Parser) parseEcho() (Node, error) {
@@ -1331,6 +1332,7 @@ func (p *Parser) parseReference() (Node, error) {
 		ref.alias = p.curr
 		p.nextToken()
 	}
+	p.nextToken()
 	return ref, nil
 }
 
