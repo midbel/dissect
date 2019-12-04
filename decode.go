@@ -369,7 +369,7 @@ func (root *state) decodeBlock(data Block) error {
 			return fmt.Errorf("decoding block: unexpected node type %T", n)
 		}
 	}
-	
+
 	switch n := data.post.(type) {
 	case Block:
 		err = root.decodeBlock(n)

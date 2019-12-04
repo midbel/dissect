@@ -128,6 +128,8 @@ func dumpNode(n Node, level int) error {
 		fmt.Printf("%s)", indent)
 	case Reference:
 		fmt.Printf("%sreference(name=%s, alias=%s, pos=%s)", indent, n.alias, n.id, n.Pos())
+	case Alias:
+		fmt.Printf("%salias(name=%s, alias=%s, pos=%s)", indent, n.alias, n.id, n.Pos())
 	case Parameter:
 		fmt.Printf("%sparameter(name=%s, type=%s, size=%s, pos=%s)", indent, n.id.Literal, n.kind.Literal, n.size.Literal, n.Pos())
 		if p, ok := n.apply.(Pair); ok {

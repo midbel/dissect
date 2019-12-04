@@ -429,6 +429,19 @@ func (p Parameter) is() Kind {
 	}
 }
 
+type Alias struct {
+	id    Token
+	alias Token
+}
+
+func (a Alias) String() string {
+	return a.id.Literal
+}
+
+func (a Alias) Pos() Position {
+	return a.id.pos
+}
+
 type Reference struct {
 	id    Token
 	alias Token
@@ -593,6 +606,16 @@ func (b Block) ResolveData() (Data, error) {
 		}
 	}
 	return Data{}, fmt.Errorf("data block not found")
+}
+
+func (b Block) GetAlias() []Alias {
+	as := make([]Alias, 0, len(b.nodes))
+	for _, n := range b.nodes {
+		if a, ok := n.(Alias); ok {
+			as = append(as, a)
+		}
+	}
+	return as
 }
 
 func (b Block) ResolveBlock(block string) (Block, error) {

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -82,6 +84,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwDeclare: p.parseDeclare,
 		kwDefine:  p.parseDefine,
 		kwTypdef:  p.parseTypedef,
+		kwAlias:   p.parseAlias,
 	}
 	p.stmts = map[string]func() (Node, error){
 		kwInclude:  p.parseInclude,
@@ -150,6 +153,24 @@ func (p *Parser) isClosed() error {
 	}
 	p.nextToken()
 	return nil
+}
+
+func (p *Parser) parseAlias() (Node, error) {
+	if !p.curr.isIdent() {
+		return nil, p.expectedError("ident")
+	}
+	a := Alias{id: p.curr}
+	p.nextToken()
+	if p.curr.Type != Assign {
+		return nil, p.expectedError("=")
+	}
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return nil, p.expectedError("ident")
+	}
+	a.alias = p.curr
+	p.nextToken()
+	return a, nil
 }
 
 func (p *Parser) parseEcho() (Node, error) {
@@ -1214,14 +1235,20 @@ func (p *Parser) parseImport() error {
 		}
 	}
 	for i := 0; i < len(files); i++ {
-		r, err := os.Open(files[i])
-		if err != nil {
-			return err
-		}
-		err = p.pushFrame(r)
-		r.Close()
-		if err != nil {
-			return err
+		if infos, err := ioutil.ReadDir(files[i]); err == nil {
+			for _, j := range infos {
+				files = append(files, filepath.Join(files[i], j.Name()))
+			}
+		} else {
+			r, err := os.Open(files[i])
+			if err != nil {
+				return err
+			}
+			err = p.pushFrame(r)
+			r.Close()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return p.isClosed()
