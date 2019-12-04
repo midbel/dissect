@@ -12,15 +12,6 @@ import (
 )
 
 func Dissect(script io.Reader, r io.Reader) error {
-	// n, err := Parse(script)
-	// if err != nil {
-	// 	return err
-	// }
-	// root := n.(Block)
-	// data, err := root.ResolveData()
-	// if err != nil {
-	// 	return err
-	// }
 	node, err := Merge(script)
 	if err != nil {
 		return err
@@ -33,7 +24,6 @@ func Dissect(script io.Reader, r io.Reader) error {
 		return err
 	}
 	s := state{
-		// Block: root,
 		data:   data.Block,
 		files:  make(map[string]*os.File),
 		stdout: os.Stdout,
@@ -44,12 +34,6 @@ func Dissect(script io.Reader, r io.Reader) error {
 }
 
 func DissectFiles(script io.Reader, fs []string) error {
-	// n, err := Parse(script)
-	// if err != nil {
-	// 	return err
-	// }
-	// root := n.(Block)
-	// data, err := root.ResolveData()
 	node, err := Merge(script)
 	if err != nil {
 		return err
@@ -70,7 +54,6 @@ func DissectFiles(script io.Reader, fs []string) error {
 		files = fs
 	}
 	s := state{
-		// Block: root,
 		data:   data.Block,
 		files:  make(map[string]*os.File),
 		stdout: os.Stdout,
