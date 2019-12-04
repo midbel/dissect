@@ -26,12 +26,19 @@ func Merge(r io.Reader) (Node, error) {
 }
 
 func mergeBlock(dat, root Block) (Node, error) {
-	nodes := make([]Node, 0, len(dat.nodes))
+	var (
+		nodes = make([]Node, 0, len(dat.nodes))
+		err   error
+	)
+	if dat.pre, err = mergeNode(dat.pre, root); err != nil {
+		return nil, err
+	}
+	if dat.post, err = mergeNode(dat.post, root); err != nil {
+		return nil, err
+	}
+
 	for _, n := range dat.nodes {
-		var (
-			nx  Node
-			err error
-		)
+		var nx Node
 		switch x := n.(type) {
 		default:
 			nx = n

@@ -76,6 +76,7 @@ type state struct {
 	buffer []byte
 	Pos    int
 	Loop   int
+	Iter   int
 
 	blocks      []string
 	currentFile string
@@ -165,6 +166,11 @@ func (root *state) ResolveInternal(str string) (Value, error) {
 		err  error
 	)
 	switch str {
+	case "Iter":
+		val = &Int{
+			Meta: meta,
+			Raw:  int64(root.Iter),
+		}
 	case "Loop":
 		val = &Int{
 			Meta: meta,
@@ -262,6 +268,22 @@ func (root *state) popBlock() {
 func (root *state) decodeBlock(data Block) error {
 	root.pushBlock(data.id.Literal)
 	defer root.popBlock()
+
+	var err error
+	switch n := data.pre.(type) {
+	case Block:
+		err = root.decodeBlock(n)
+	case Reference:
+		p, err := root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return err
+		}
+		err = root.decodeBlock(p)
+	}
+	if err != nil {
+		return err
+	}
+
 	for _, n := range data.nodes {
 		switch n := n.(type) {
 		case Break:
@@ -346,6 +368,20 @@ func (root *state) decodeBlock(data Block) error {
 		default:
 			return fmt.Errorf("decoding block: unexpected node type %T", n)
 		}
+	}
+	
+	switch n := data.post.(type) {
+	case Block:
+		err = root.decodeBlock(n)
+	case Reference:
+		p, err := root.ResolveBlock(n.id.Literal)
+		if err != nil {
+			return err
+		}
+		err = root.decodeBlock(p)
+	}
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -748,6 +784,7 @@ func (root *state) decodeRepeat(n Repeat) error {
 	} else {
 		eval = root.evalRepeatUint
 	}
+	root.Iter = 0
 	return eval(n.repeat, dat)
 }
 
@@ -766,6 +803,7 @@ func (root *state) evalRepeatBool(expr Expression, dat Block) error {
 			}
 			break
 		}
+		root.Iter++
 	}
 	return err
 }
@@ -789,6 +827,7 @@ func (root *state) evalRepeatUint(expr Expression, dat Block) error {
 			}
 			break
 		}
+		root.Iter++
 	}
 	return err
 }

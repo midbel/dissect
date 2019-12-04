@@ -557,6 +557,9 @@ type Data struct {
 type Block struct {
 	id    Token
 	nodes []Node
+
+	pre  Node
+	post Node
 }
 
 func emptyBlock(id Token) Block {
