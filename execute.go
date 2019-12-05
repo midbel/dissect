@@ -30,7 +30,14 @@ func Dissect(script io.Reader, r io.Reader) error {
 		stderr: os.Stderr,
 	}
 	defer s.Close()
-	return s.Run(r)
+	if err = s.decodeNodes([]Node{data.pre}); err != nil {
+		return err
+	}
+	err = s.Run(r)
+	if err == nil {
+		err = s.decodeNodes([]Node{data.post})
+	}
+	return err
 }
 
 func DissectFiles(script io.Reader, fs []string) error {
@@ -61,7 +68,7 @@ func DissectFiles(script io.Reader, fs []string) error {
 	}
 	defer s.Close()
 
-	if err := s.decodeNodes([]Node{data.pre}); err != nil {
+	if err = s.decodeNodes([]Node{data.pre}); err != nil {
 		return err
 	}
 	for f := range walkFiles(files) {
@@ -75,10 +82,7 @@ func DissectFiles(script io.Reader, fs []string) error {
 			return err
 		}
 	}
-	if err := s.decodeNodes([]Node{data.post}); err != nil {
-		return err
-	}
-	return nil
+	return s.decodeNodes([]Node{data.post})
 }
 
 func checkExit(err error) error {
