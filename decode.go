@@ -97,6 +97,7 @@ func (root *state) Close() error {
 
 func (root *state) Run(r io.Reader) error {
 	root.Reset(r)
+
 	for {
 		if err := root.growBuffer(4096); err != nil {
 			return err
@@ -306,6 +307,9 @@ func (root *state) decodeBlock(data Block) error {
 
 func (root *state) decodeNodes(nodes []Node) error {
 	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
 		switch n := n.(type) {
 		case Break:
 			return root.decodeBreak(n)

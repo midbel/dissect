@@ -622,6 +622,15 @@ func (p *Parser) parseData() (Node, error) {
 	b := emptyBlock(p.curr)
 	p.nextToken()
 
+	var pre, post Node
+	if p.curr.Type == Lesser {
+		e, o, err := p.parseDiamond()
+		if err != nil {
+			return nil, err
+		}
+		pre, post = e, o
+	}
+
 	var files []Token
 	for p.curr.Type != lparen {
 		if !p.curr.isIdent() {
@@ -636,7 +645,13 @@ func (p *Parser) parseData() (Node, error) {
 		return nil, err
 	}
 	b.nodes = append(b.nodes, ns...)
-	return Data{Block: b, files: files}, nil
+	d := Data{
+		Block: b,
+		pre: pre,
+		post: post,
+		files: files,
+	}
+	return d, nil
 }
 
 func (p *Parser) parsePredicate() (Expression, error) {
@@ -1261,14 +1276,65 @@ func (p *Parser) parseBlock() (Node, error) {
 		return nil, p.unexpectedError()
 	}
 	b := emptyBlock(p.curr)
-
 	p.nextToken()
+
+	if p.curr.Type == Lesser {
+		pre, post, err := p.parseDiamond()
+		if err != nil {
+			return nil, err
+		}
+		b.pre, b.post = pre, post
+	}
+
 	ns, err := p.parseStatements()
 	if err != nil {
 		return nil, err
 	}
 	b.nodes = ns
 	return b, nil
+}
+
+func (p *Parser) parseDiamond() (Node, Node, error) {
+	var (
+		pre  Node
+		post Node
+		err  error
+	)
+	next := func() (Node, error) {
+		p.nextToken()
+		if !p.curr.isIdent() {
+			return nil, p.expectedError("ident")
+		}
+		n := Reference{
+			id:    p.curr,
+			alias: p.curr,
+		}
+		p.nextToken()
+		return n, nil
+	}
+	p.nextToken()
+	switch p.curr.Type {
+	case Ident, Text:
+		pre = Reference{
+			id:    p.curr,
+			alias: p.curr,
+		}
+		p.nextToken()
+		if p.curr.Type != comma {
+			return pre, post, p.expectedError("comma")
+		}
+		post, err = next()
+	case comma:
+		post, err = next()
+	case Greater:
+	default:
+		err = p.unexpectedError()
+	}
+	if p.curr.Type != Greater {
+		err = p.expectedError(">")
+	}
+	p.nextToken()
+	return pre, post, err
 }
 
 func (p *Parser) parsePair() (Node, error) {

@@ -551,6 +551,8 @@ func (p Pair) Pos() Position {
 
 type Data struct {
 	Block
+	pre   Node
+	post  Node
 	files []Token
 }
 

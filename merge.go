@@ -25,10 +25,26 @@ func Merge(r io.Reader) (Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	if dat, err = mergeData(dat, root); err != nil {
+		return nil, err
+	} else {
+	}
 	bck, err := mergeBlock(dat.Block, root)
 	if err == nil {
 		dat.Block = bck.(Block)
 	}
+	return dat, err
+}
+
+func mergeData(dat Data, root Block) (Data, error) {
+	var err error
+	if dat.pre != nil {
+		dat.pre, err = mergeNode(dat.pre, root)
+	}
+	if dat.post != nil {
+		dat.post, err = mergeNode(dat.post, root)
+	}
+
 	return dat, err
 }
 

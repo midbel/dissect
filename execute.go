@@ -61,6 +61,9 @@ func DissectFiles(script io.Reader, fs []string) error {
 	}
 	defer s.Close()
 
+	if err := s.decodeNodes([]Node{data.pre}); err != nil {
+		return err
+	}
 	for f := range walkFiles(files) {
 		r, err := os.Open(f)
 		if err != nil {
@@ -71,6 +74,9 @@ func DissectFiles(script io.Reader, fs []string) error {
 		if err != nil {
 			return err
 		}
+	}
+	if err := s.decodeNodes([]Node{data.post}); err != nil {
+		return err
 	}
 	return nil
 }
