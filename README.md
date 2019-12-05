@@ -8,7 +8,12 @@ dissect is made of two main elements:
 * a scripting/configuration language
 * an interpreter
 
-## example
+## Example
+
+the example below shows how to use dissect to "parse" structure found into pcap file.
+This example only shows how to get and print the packet headers added before each
+captured packet. To dissect data further the blocks ipv4/ipv6/tcp should be extended
+and the "data" block should also be extended.
 
 ```
 block version (
@@ -55,6 +60,10 @@ data (
   repeat [true] (
     include record
     pdata as bytes with incllen
+
+    echo "packet #%[$Iter] (%[$Pos/8])"
+
+    print raw as csv with seconds micros incllen origlen
   )
 )
 ```
