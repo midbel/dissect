@@ -88,7 +88,7 @@ func evalBinary(b Binary, root *state) (Value, error) {
 		return evalRelational(b, root)
 	case And, Or:
 		return evalLogical(b, root)
-	case Add, Mul, Div, Min:
+	case Add, Mul, Div, Min, Modulo:
 		return evalArithmetic(b, root)
 	case Assign:
 		return nil, nil

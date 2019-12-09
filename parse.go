@@ -45,6 +45,7 @@ var bindings = map[rune]int{
 	Min:        bindSum,
 	Mul:        bindMul,
 	Div:        bindMul,
+	Modulo:     bindMul,
 	Cond:       bindCond,
 	ShiftLeft:  bindShift,
 	ShiftRight: bindShift,
@@ -647,8 +648,8 @@ func (p *Parser) parseData() (Node, error) {
 	b.nodes = append(b.nodes, ns...)
 	d := Data{
 		Block: b,
-		pre: pre,
-		post: post,
+		pre:   pre,
+		post:  post,
 		files: files,
 	}
 	return d, nil

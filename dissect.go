@@ -252,8 +252,6 @@ func (t Token) String() string {
 		return "&"
 	case Cond:
 		return "?:"
-	case Modulo:
-		return "%"
 	case Add:
 		return "+"
 	case Min:
@@ -262,6 +260,8 @@ func (t Token) String() string {
 		return "*"
 	case Div:
 		return "/"
+	case Modulo:
+		return "%"
 	case And:
 		return "&&"
 	case Or:

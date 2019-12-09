@@ -147,6 +147,8 @@ func (b Binary) String() string {
 		str.WriteString("/")
 	case Mul:
 		str.WriteString("*")
+	case Modulo:
+		str.WriteString("%")
 	case BitOr:
 		str.WriteString("|")
 	case BitAnd:

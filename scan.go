@@ -249,6 +249,8 @@ func (s *Scanner) scanOperator(tok *Token) {
 		tok.Type = Div
 	case s.char == minus:
 		tok.Type = Min
+	case s.char == modulo:
+		tok.Type = Modulo
 	case s.char == equal:
 		tok.Type = Assign
 		if peek == s.char {
@@ -344,7 +346,7 @@ func isHexa(b rune) bool {
 }
 
 func isOp(b rune) bool {
-	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe || b == add || b == div || b == mul || b == minus || b == question
+	return b == equal || b == bang || b == langle || b == rangle || b == ampersand || b == pipe || b == add || b == div || b == mul || b == minus || b == question || b == modulo
 }
 
 func isComment(b rune) bool {
