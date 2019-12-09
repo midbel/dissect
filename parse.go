@@ -852,8 +852,7 @@ func (p *Parser) parseMatch() (Node, error) {
 			match.nodes = append(match.nodes, mcs...)
 		}
 	}
-	p.nextToken()
-	return match, nil
+	return match, p.isClosed()
 }
 
 func (p *Parser) parseMatchCase(nocomma bool) ([]MatchCase, bool, error) {
@@ -1396,7 +1395,6 @@ func (p *Parser) parseReference() (Node, error) {
 		}
 		p.nextToken()
 		ref.alias = p.curr
-		p.nextToken()
 	}
 	p.nextToken()
 	return ref, nil
