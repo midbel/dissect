@@ -651,7 +651,7 @@ func (b Block) ResolveConstant(cst string) (Constant, error) {
 			return c, nil
 		}
 	}
-	return Constant{}, fmt.Errorf("%s: constant not defined")
+	return Constant{}, fmt.Errorf("%s: constant not defined", cst)
 }
 
 func (b Block) ResolvePair(pair string) (Pair, error) {
