@@ -48,5 +48,9 @@ data (
     )
   )
 
-  print eng
+  let _day = coarse - (coarse % 86400)
+  let _hour = coarse - (coarse % 3600)
+  let _filename = "tmp/hrdp/pdh/" + code + "/" + _day + "/" + _hour + ".csv"
+
+  print eng to _filename
 )
