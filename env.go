@@ -20,14 +20,18 @@ func NewEnclosedEnvironment(str string, parent *Environment) *Environment {
 	e := Environment{
 		block:  str,
 		parent: parent,
-		lookup: make(map[string]int),
-		values: make([]Value, 0, 64),
 	}
+	e.Reset()
 	return &e
 }
 
 func (e *Environment) List() []Value {
 	return e.values
+}
+
+func (e *Environment) Reset() {
+	e.values = make([]Value, 0, 256)
+	e.lookup = make(map[string]int)
 }
 
 func (e *Environment) Len() int {
@@ -39,14 +43,9 @@ func (e *Environment) Len() int {
 }
 
 func (e *Environment) Path() string {
-	var p string
+	p := e.Block
 	if e.parent != nil {
-		p = e.parent.Path()
-	}
-	if p != "" {
-		p = fmt.Sprintf("%s/%s", p, e.block)
-	} else {
-		p = e.block
+		p = fmt.Sprintf("%s/%s", e.parent.Path(), p)
 	}
 	return p
 }
@@ -73,6 +72,9 @@ func (e *Environment) Resolve(str string) (Value, error) {
 }
 
 func (e *Environment) Define(v Value) {
+	if v == nil {
+		return
+	}
 	e.lookup[v.String()] = len(e.values)
 	e.values = append(e.values, v)
 }
