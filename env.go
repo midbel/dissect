@@ -5,10 +5,11 @@ import (
 )
 
 type Environment struct {
-  parent *Environment
-  
+	parent *Environment
+
 	block  string
-	values map[string]Value
+	lookup map[string]int
+	values []Value
 }
 
 func NewEnvironment(str string) *Environment {
@@ -19,9 +20,14 @@ func NewEnclosedEnvironment(str string, parent *Environment) *Environment {
 	e := Environment{
 		block:  str,
 		parent: parent,
-		values: make(map[string]Value),
+		lookup: make(map[string]int),
+		values: make([]Value, 0, 64),
 	}
 	return &e
+}
+
+func (e *Environment) List() []Value {
+	return e.values
 }
 
 func (e *Environment) Len() int {
@@ -46,23 +52,27 @@ func (e *Environment) Path() string {
 }
 
 func (e *Environment) Delete(str string, all bool) {
-	delete(e.values, str)
+	i, ok := e.lookup[str]
+	if ok {
+		e.values = append(e.values[:i], e.values[i+1:]...)
+	}
 	if all && e.parent != nil {
 		e.parent.Delete(str, all)
 	}
 }
 
-func (e *Environment) Get(str string) (Value, error) {
-	v, ok := e.values[str]
+func (e *Environment) Resolve(str string) (Value, error) {
+	i, ok := e.lookup[str]
 	if ok {
-		return v, nil
+		return e.values[i], nil
 	}
 	if e.parent == nil {
 		return nil, fmt.Errorf("%s: value not defined", str)
 	}
-	return e.parent.Get(str)
+	return e.parent.Resolve(str)
 }
 
-func (e *Environment) Set(v Value) {
-	e.values[v.String()] = v
+func (e *Environment) Define(v Value) {
+	e.lookup[v.String()] = len(e.values)
+	e.values = append(e.values, v)
 }
