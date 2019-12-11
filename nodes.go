@@ -291,6 +291,7 @@ type Print struct {
 	method Token // eng, raw, both, debug (default)
 	format Token // csv,...
 	values []Token
+	expr   Expression
 }
 
 func (p Print) Pos() Position {

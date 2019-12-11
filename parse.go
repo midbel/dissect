@@ -266,6 +266,8 @@ func (p *Parser) parsePrint() (Node, error) {
 			err = p.parsePrintAs(&f)
 		} else if kw == kwWith {
 			err = p.parsePrintWith(&f)
+		} else if kw == kwIf {
+			err = p.parsePrintIf(&f)
 		} else {
 			err = p.unexpectedError()
 		}
@@ -278,7 +280,7 @@ func (p *Parser) parsePrint() (Node, error) {
 
 func (p *Parser) parsePrintTo(f *Print) error {
 	if p.curr.Literal != kwTo {
-		return p.expectedError("to")
+		return p.expectedError(kwTo)
 	}
 	p.nextToken()
 	if !p.curr.isIdent() {
@@ -292,6 +294,8 @@ func (p *Parser) parsePrintTo(f *Print) error {
 			return p.parsePrintAs(f)
 		} else if kw == kwWith {
 			return p.parsePrintWith(f)
+		} else if kw == kwIf {
+			return p.parsePrintIf(f)
 		} else {
 			return p.unexpectedError()
 		}
@@ -319,7 +323,13 @@ func (p *Parser) parsePrintAs(f *Print) error {
 	p.nextToken()
 	switch p.curr.Type {
 	case Keyword:
-		return p.parsePrintWith(f)
+		if kw := p.curr.Literal; kw == kwWith {
+			return p.parsePrintWith(f)
+		} else if kw == kwIf {
+			return p.parsePrintIf(f)
+		} else {
+			return p.unexpectedError()
+		}
 	case Newline:
 	default:
 		return p.unexpectedError()
@@ -329,17 +339,35 @@ func (p *Parser) parsePrintAs(f *Print) error {
 
 func (p *Parser) parsePrintWith(f *Print) error {
 	if p.curr.Literal != kwWith {
-		return p.expectedError("with")
+		return p.expectedError(kwWith)
 	}
 	p.nextToken()
-	for p.curr.Type != Newline {
+	for !p.isDone() {
+		if p.curr.Type == Newline || p.curr.Type == Keyword {
+			break
+		}
 		if p.curr.Type != Ident {
 			return p.expectedError("ident")
 		}
 		f.values = append(f.values, p.curr)
 		p.nextToken()
 	}
+	if p.curr.Type == Keyword {
+		return p.parsePrintIf(f)
+	}
 	return nil
+}
+
+func (p *Parser) parsePrintIf(f *Print) error {
+	if p.curr.Literal != kwIf {
+		return p.expectedError(kwIf)
+	}
+	p.nextToken()
+	e, err := p.parsePredicate()
+	if err == nil {
+		f.expr = e
+	}
+	return err
 }
 
 func (p *Parser) parseContinue() (Node, error) {

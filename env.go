@@ -8,7 +8,7 @@ type Environment struct {
 	parent *Environment
 
 	block  string
-	lookup map[string]int
+	lookup map[string]int // map[string][]int
 	values []Value
 }
 
@@ -43,7 +43,7 @@ func (e *Environment) Len() int {
 }
 
 func (e *Environment) Path() string {
-	p := e.Block
+	p := e.block
 	if e.parent != nil {
 		p = fmt.Sprintf("%s/%s", e.parent.Path(), p)
 	}

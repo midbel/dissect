@@ -40,9 +40,10 @@ type Value interface {
 }
 
 type Meta struct {
-	Id  string
-	Pos int
-	Eng Value
+	Scope string
+	Id    string
+	Pos   int
+	Eng   Value
 }
 
 func (m *Meta) Set(v Value) {
@@ -54,7 +55,11 @@ func (m *Meta) Offset() int {
 }
 
 func (m *Meta) String() string {
-	return m.Id
+	i := m.Id
+	if m.Scope != "" {
+		i = fmt.Sprintf("%s.%s", m.Scope, i)
+	}
+	return i
 }
 
 func (m *Meta) setId(s string) {

@@ -25,7 +25,11 @@ func dumpNode(n Node, level int) error {
 	case Token:
 		fmt.Printf("%stoken(literal=%s, pos=%s)", indent, n.Literal, n.Pos())
 	case Print:
-		fmt.Printf("%sprint(file=%s, format=%s, method=%s, pos=%s)", indent, n.file, n.format, n.method, n.Pos())
+		expr := "???"
+		if n.expr != nil {
+			expr = n.expr.String()
+		}
+		fmt.Printf("%sprint(file=%s, format=%s, method=%s, expr=%s, pos=%s)", indent, n.file, n.format, n.method, expr, n.Pos())
 		if len(n.values) > 0 {
 			fmt.Println(" (")
 			for _, n := range n.values {

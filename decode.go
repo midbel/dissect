@@ -448,6 +448,15 @@ func (root *state) decodeEcho(e Echo) error {
 }
 
 func (root *state) decodePrint(p Print) error {
+	if p.expr != nil {
+		v, err := eval(p.expr, root)
+		if err != nil {
+			return err
+		}
+		if !isTrue(v) {
+			return nil
+		}
+	}
 	file := p.file.Literal
 	if p.file.Type == Ident {
 		v, err := root.ResolveValue(file)
