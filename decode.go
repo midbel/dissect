@@ -65,11 +65,48 @@ const numbit = 8
 // 	return nil
 // }
 
+type Field struct {
+	Block string
+	Id    string
+	Pos   int
+
+	raw Value
+	eng Value
+}
+
+func (f Field) String() string {
+	s := f.Id
+	if f.Block != "" {
+		s = fmt.Sprintf("%s.%s", f.Block, s)
+	}
+	return s
+}
+
+func (f Field) Offset() int {
+	return f.Pos
+}
+
+func (f Field) Skip() bool {
+	return len(f.Id) == 0 || f.Id[0] == underscore
+}
+
+func (f Field) Raw() Value {
+	return f.raw
+}
+
+func (f Field) Eng() Value {
+	if f.eng == nil {
+		return f.raw
+	}
+	return f.eng
+}
+
 type state struct {
 	Block
 	data Block
 
 	Values []Value
+	Fields []Field
 	files  map[string]*os.File
 
 	reader *bufio.Reader
