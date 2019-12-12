@@ -25,41 +25,12 @@ func eval(e Expression, root *state) (Value, error) {
 		v, err = evalLiteral(e, root)
 	case Identifier:
 		v, err = evalIdentifier(e, root)
-	case Member:
-		v, err = evalMember(e, root)
 	case Assignment:
 		v, err = evalAssign(e, root)
 	default:
 		err = fmt.Errorf("unsupported expression type %T", e)
 	}
 	return v, err
-}
-
-func evalMember(m Member, root *state) (Value, error) {
-	v, err := evalIdentifier(Identifier{id: m.ref}, root)
-	if err != nil {
-		return nil, err
-	}
-	var val Value
-	switch m.attr.Literal {
-	case "raw":
-		val = v
-	case "eng":
-		val = v.eng()
-	case "id":
-		val = &String{
-			Meta: Meta{Id: m.attr.Literal},
-			Raw:  m.String(),
-		}
-	case "pos":
-		val = &Int{
-			Meta: Meta{Id: m.attr.Literal},
-			Raw:  int64(v.Offset()),
-		}
-	default:
-		return nil, fmt.Errorf("unknown attribute %s", m.attr.Literal)
-	}
-	return val, nil
 }
 
 func evalTernary(t Ternary, root *state) (Value, error) {
@@ -78,7 +49,6 @@ func evalAssign(a Assignment, root *state) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	v.setId(a.left.String())
 	return v, nil
 }
 
@@ -117,10 +87,7 @@ func evalUnary(u Unary, root *state) (Value, error) {
 }
 
 func evalLiteral(i Literal, _ *state) (Value, error) {
-	var (
-		val  Value
-		meta = Meta{Id: kwAno}
-	)
+	var val Value
 	switch i.id.Type {
 	case Integer:
 		i, err := strconv.ParseInt(i.id.Literal, 0, 64)
@@ -128,8 +95,7 @@ func evalLiteral(i Literal, _ *state) (Value, error) {
 			return nil, err
 		}
 		val = &Int{
-			Meta: meta,
-			Raw:  i,
+			Raw: i,
 		}
 	case Float:
 		i, err := strconv.ParseFloat(i.id.Literal, 64)
@@ -137,8 +103,7 @@ func evalLiteral(i Literal, _ *state) (Value, error) {
 			return nil, err
 		}
 		val = &Real{
-			Meta: meta,
-			Raw:  i,
+			Raw: i,
 		}
 	case Bool:
 		i, err := strconv.ParseBool(i.id.Literal)
@@ -146,13 +111,11 @@ func evalLiteral(i Literal, _ *state) (Value, error) {
 			return nil, err
 		}
 		val = &Boolean{
-			Meta: meta,
-			Raw:  i,
+			Raw: i,
 		}
 	case Text:
 		val = &String{
-			Meta: meta,
-			Raw:  i.id.Literal,
+			Raw: i.id.Literal,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported token type %s", TokenString(i.id))
@@ -280,8 +243,7 @@ func evalBitwise(b Binary, root *state) (Value, error) {
 
 func anonymousBool(ok bool) Value {
 	v := Boolean{
-		Meta: Meta{Id: kwAno},
-		Raw:  ok,
+		Raw: ok,
 	}
 	return &v
 }

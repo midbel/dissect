@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
@@ -462,26 +461,7 @@ func appendRaw(buf []byte, v Value, escape bool) []byte {
 }
 
 func appendEng(buf []byte, v Value, escape bool) []byte {
-	var eng Value
-	switch v := v.(type) {
-	case *Int:
-		eng = v.Eng
-	case *Uint:
-		eng = v.Eng
-	case *Real:
-		eng = v.Eng
-	case *Boolean:
-		eng = v.Eng
-	case *String:
-		eng = v.Eng
-	case *Bytes:
-		eng = v.Eng
-	default:
-	}
-	if eng == nil {
-		eng = v
-	}
-	return appendRaw(buf, eng, escape)
+	return appendRaw(buf, v, escape)
 }
 
 func escapeQuotes(buf []byte) []byte {

@@ -9,7 +9,7 @@ type Environment struct {
 
 	block  string
 	lookup map[string]int // map[string][]int
-	values []Value
+	values []Field
 }
 
 func NewEnvironment(str string) *Environment {
@@ -25,12 +25,12 @@ func NewEnclosedEnvironment(str string, parent *Environment) *Environment {
 	return &e
 }
 
-func (e *Environment) List() []Value {
+func (e *Environment) List() []Field {
 	return e.values
 }
 
 func (e *Environment) Reset() {
-	e.values = make([]Value, 0, 256)
+	e.values = make([]Field, 0, 256)
 	e.lookup = make(map[string]int)
 }
 
@@ -60,21 +60,18 @@ func (e *Environment) Delete(str string, all bool) {
 	}
 }
 
-func (e *Environment) Resolve(str string) (Value, error) {
+func (e *Environment) Resolve(str string) (Field, error) {
 	i, ok := e.lookup[str]
 	if ok {
 		return e.values[i], nil
 	}
 	if e.parent == nil {
-		return nil, fmt.Errorf("%s: value not defined", str)
+		return Field{}, fmt.Errorf("%s: field not defined", str)
 	}
 	return e.parent.Resolve(str)
 }
 
-func (e *Environment) Define(v Value) {
-	if v == nil {
-		return
-	}
-	e.lookup[v.String()] = len(e.values)
-	e.values = append(e.values, v)
+func (e *Environment) Define(f Field) {
+	e.lookup[f.String()] = len(e.values)
+	e.values = append(e.values, f)
 }

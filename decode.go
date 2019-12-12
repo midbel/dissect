@@ -105,7 +105,6 @@ type state struct {
 	Block
 	data Block
 
-	// Values []Value
 	Fields []Field
 	files  map[string]*os.File
 
@@ -172,7 +171,6 @@ func (root *state) reset() {
 	} else {
 		root.buffer = root.buffer[:0]
 	}
-	// root.Values = root.Values[:0]
 	root.Fields = root.Fields[:0]
 	root.Pos = 0
 }
@@ -200,7 +198,6 @@ func (root *state) Size() int {
 
 func (root *state) ResolveInternal(str string) (Field, error) {
 	var (
-		// meta = Meta{Id: str}
 		field = Field{Id: str}
 		err   error
 	)
@@ -275,7 +272,7 @@ func (root *state) DeleteValue(n string) {
 func (root *state) currentBlock() string {
 	n := len(root.blocks)
 	if n == 0 {
-		return ""
+		return "/"
 	}
 	return root.blocks[n-1]
 }
@@ -631,8 +628,16 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 }
 
 func (root *state) decodeLet(e Let) (Field, error) {
-	// return eval(e.expr, root)
-	return Field{}, nil
+	v, err := eval(e.expr, root)
+	if err != nil {
+		return Field{}, err
+	}
+	f := Field{
+		Id:  e.id.Literal,
+		raw: v,
+		eng: v,
+	}
+	return f, nil
 }
 
 func (root *state) decodeExit(e Exit) error {
@@ -938,10 +943,8 @@ func (root *state) evalPoint(cs []Constant, v Value) (Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			// val, _ := strconv.ParseFloat(c.value.Literal, 64)
 			return &Real{
-				Meta: Meta{Id: v.String()},
-				Raw:  asReal(val),
+				Raw: asReal(val),
 			}, nil
 		}
 		if j := i + 1; j < len(cs) {
@@ -965,8 +968,7 @@ func (root *state) evalEnum(cs []Constant, v Value) (Value, error) {
 				return nil, err
 			}
 			v := &String{
-				Meta: Meta{Id: v.String()},
-				Raw:  asString(str), // c.value.Literal,
+				Raw: asString(str),
 			}
 			return v, nil
 		}
@@ -985,13 +987,12 @@ func (root *state) evalPoly(cs []Constant, v Value) (Value, error) {
 			return nil, err
 		}
 		pow, _ := strconv.ParseFloat(c.id.Literal, 64)
-		mul := asReal(pv) // strconv.ParseFloat(c.value.Literal, 64)
+		mul := asReal(pv)
 
 		eng += mul * math.Pow(raw, pow)
 	}
 	return &Real{
-		Meta: Meta{Id: v.String()},
-		Raw:  eng,
+		Raw: eng,
 	}, nil
 }
 
