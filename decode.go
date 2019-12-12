@@ -570,7 +570,7 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 	raw := Field{
 		Id:  p.id.Literal,
 		Pos: root.Pos,
-		Len: bits*numbit,
+		Len: bits * numbit,
 	}
 	if n := root.Size() / numbit; n < index+bits {
 		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)

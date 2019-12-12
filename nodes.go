@@ -226,6 +226,27 @@ func (t Ternary) isBoolean() bool {
 	return true
 }
 
+type Member struct {
+	id   Token
+	attr Token
+}
+
+func (m Member) String() string {
+	return m.id.Literal
+}
+
+func (m Member) Pos() Position {
+	return m.id.Pos()
+}
+
+func (m Member) exprNode() Node {
+	return m
+}
+
+func (m Member) isBoolean() bool {
+	return false
+}
+
 type Echo struct {
 	pos  Position
 	file Token

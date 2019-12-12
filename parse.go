@@ -788,7 +788,22 @@ func (p *Parser) parsePrefix() (Expression, error) {
 		expr = n
 	case Integer, Float, Bool, Text:
 		expr = Literal{id: p.curr}
-	case Ident, Internal:
+	case Ident:
+		id := p.curr
+		if p.peek.Type == dot {
+			p.nextToken()
+			p.nextToken()
+			if p.curr.Type != Ident {
+				return nil, p.expectedError("ident")
+			}
+			expr = Member{
+				id:   id,
+				attr: p.curr,
+			}
+		} else {
+			expr = Identifier{id: id}
+		}
+	case Internal:
 		expr = Identifier{id: p.curr}
 	default:
 		return nil, p.unexpectedError()
