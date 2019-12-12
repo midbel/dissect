@@ -77,6 +77,7 @@ type Parser struct {
 func Parse(r io.Reader) (Node, error) {
 	var p Parser
 	p.kwords = map[string]func() (Node, error){
+		kwInclude: p.parseImport,
 		kwData:    p.parseData,
 		kwBlock:   p.parseBlock,
 		kwEnum:    p.parsePair,
@@ -115,14 +116,6 @@ func Parse(r io.Reader) (Node, error) {
 
 func (p *Parser) Parse() (Node, error) {
 	var root Block
-
-	p.skipComment()
-	if p.curr.Type == Keyword && p.curr.Literal == kwImport {
-		if err := p.parseImport(); err != nil {
-			return nil, err
-		}
-	}
-
 	for {
 		p.skipComment()
 		if p.isDone() {
@@ -1265,10 +1258,10 @@ func (p *Parser) parseDefine() (Node, error) {
 	return b, p.isClosed()
 }
 
-func (p *Parser) parseImport() error {
+func (p *Parser) parseImport() (Node, error) {
 	p.nextToken()
 	if p.curr.Type != lparen {
-		return p.expectedError("(")
+		return nil, p.expectedError("(")
 	}
 	p.nextToken()
 
@@ -1279,7 +1272,7 @@ func (p *Parser) parseImport() error {
 			break
 		}
 		if !p.curr.isIdent() {
-			return p.expectedError("ident")
+			return nil, p.expectedError("ident")
 		}
 		files = append(files, p.curr.Literal)
 
@@ -1290,7 +1283,7 @@ func (p *Parser) parseImport() error {
 		case Newline:
 			p.nextToken()
 		default:
-			return p.unexpectedError()
+			return nil, p.unexpectedError()
 		}
 	}
 	for i := 0; i < len(files); i++ {
@@ -1301,16 +1294,16 @@ func (p *Parser) parseImport() error {
 		} else {
 			r, err := os.Open(files[i])
 			if err != nil {
-				return err
+				return nil, err
 			}
 			err = p.pushFrame(r)
 			r.Close()
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return p.isClosed()
+	return nil, p.isClosed()
 }
 
 func (p *Parser) parseBlock() (Node, error) {

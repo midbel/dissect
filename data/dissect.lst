@@ -1,5 +1,5 @@
 # a comment before import
-import (
+include (
   "blocks.lst"
   "funcs.lst"
 )

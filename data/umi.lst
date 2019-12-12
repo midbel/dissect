@@ -1,4 +1,4 @@
-import (
+include (
   "src/github.com/midbel/dissect/data/enums.lst"
   "src/github.com/midbel/dissect/data/time.lst"
 )

@@ -130,7 +130,6 @@ const (
 	kwPoint    = "pointpair"
 	kwBlock    = "block"
 	kwTypdef   = "typedef"
-	kwImport   = "import"
 	kwAlias    = "alias"
 	kwInclude  = "include"
 	kwRepeat   = "repeat"
@@ -173,7 +172,6 @@ var keywords = []string{
 	kwAlias,
 	kwBlock,
 	kwTypdef,
-	kwImport,
 	kwInclude,
 	kwData,
 	kwDeclare,
