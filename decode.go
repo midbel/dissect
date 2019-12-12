@@ -202,36 +202,36 @@ func (root *state) ResolveInternal(str string) (Field, error) {
 	var (
 		// meta = Meta{Id: str}
 		field = Field{Id: str}
-		err  error
+		err   error
 	)
 	switch str {
 	case "Iter":
 		field.raw = &Int{
-			Raw:  int64(root.Iter),
+			Raw: int64(root.Iter),
 		}
 	case "Loop":
 		field.raw = &Int{
-			Raw:  int64(root.Loop),
+			Raw: int64(root.Loop),
 		}
 	case "Time":
 		field.raw = &Int{
-			Raw:  time.Now().Unix(),
+			Raw: time.Now().Unix(),
 		}
 	case "Num":
 		field.raw = &Int{
-			Raw:  int64(len(root.Fields)),
+			Raw: int64(len(root.Fields)),
 		}
 	case "Pos":
 		field.raw = &Int{
-			Raw:  int64(root.Pos),
+			Raw: int64(root.Pos),
 		}
 	case "Size":
 		field.raw = &Int{
-			Raw:  int64(root.Size()),
+			Raw: int64(root.Size()),
 		}
 	case "File":
 		field.raw = &String{
-			Raw:  root.currentFile,
+			Raw: root.currentFile,
 		}
 	case "Block":
 		block := "block"
@@ -239,11 +239,11 @@ func (root *state) ResolveInternal(str string) (Field, error) {
 			block = b
 		}
 		field.raw = &String{
-			Raw:  block,
+			Raw: block,
 		}
 	case "Path":
 		field.raw = &String{
-			Raw:  root.path(),
+			Raw: root.path(),
 		}
 	default:
 		err = fmt.Errorf("%s: unknown internal value", str)
@@ -570,7 +570,7 @@ func (root *state) decodeParameter(p Parameter) (Field, error) {
 
 func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 	raw := Field{
-		Id: p.id.Literal,
+		Id:  p.id.Literal,
 		Pos: root.Pos,
 	}
 	if n := root.Size() / numbit; n < index+bits {
@@ -579,12 +579,12 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 	switch p.is() {
 	case kindBytes:
 		raw.raw = &Bytes{
-			Raw:  root.buffer[index : index+bits],
+			Raw: root.buffer[index : index+bits],
 		}
 	case kindString:
 		str := root.buffer[index : index+bits]
 		raw.raw = &String{
-			Raw:  strings.Trim(string(str), "\x00"),
+			Raw: strings.Trim(string(str), "\x00"),
 		}
 	default:
 		return Field{}, fmt.Errorf("unsupported type: %s", p.is())
@@ -614,15 +614,15 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 	switch p.is() {
 	case kindInt: // signed integer
 		raw.raw = &Int{
-			Raw:  int64(dat),
+			Raw: int64(dat),
 		}
 	case kindUint: // unsigned integer
 		raw.raw = &Uint{
-			Raw:  dat,
+			Raw: dat,
 		}
 	case kindFloat: // float
 		raw.raw = &Real{
-			Raw:  math.Float64frombits(dat),
+			Raw: math.Float64frombits(dat),
 		}
 	default:
 		return Field{}, fmt.Errorf("unsupported type: %s", p.is())

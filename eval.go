@@ -162,7 +162,7 @@ func evalLiteral(i Literal, _ *state) (Value, error) {
 
 func evalIdentifier(i Identifier, root *state) (Value, error) {
 	var (
-		f Field
+		f   Field
 		err error
 	)
 	if i.id.Type != Internal {

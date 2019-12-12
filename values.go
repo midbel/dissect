@@ -32,7 +32,7 @@ type Value interface {
 	or(Value) (Value, error)
 }
 
-type Null struct {}
+type Null struct{}
 
 func (n *Null) Cmp(v Value) int {
 	if _, ok := v.(*Null); ok {
