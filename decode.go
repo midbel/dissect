@@ -69,6 +69,7 @@ type Field struct {
 	Block string
 	Id    string
 	Pos   int
+	Len   int
 
 	raw Value
 	eng Value
@@ -87,7 +88,7 @@ func (f Field) Offset() int {
 }
 
 func (f Field) Skip() bool {
-	return len(f.Id) == 0 || f.Id[0] == underscore
+	return len(f.Id) == 0 || f.Id[0] == underscore || f.Len == 0
 }
 
 func (f Field) Raw() Value {
@@ -569,6 +570,7 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 	raw := Field{
 		Id:  p.id.Literal,
 		Pos: root.Pos,
+		Len: bits*numbit,
 	}
 	if n := root.Size() / numbit; n < index+bits {
 		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)
@@ -604,6 +606,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 	}
 	raw.Id = p.id.Literal
 	raw.Pos = root.Pos
+	raw.Len = bits
 	var (
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
 		dat = btoi(buf, shift, mask)
