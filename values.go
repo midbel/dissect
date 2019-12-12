@@ -17,10 +17,7 @@ var (
 )
 
 type Value interface {
-	fmt.Stringer
-	Offset() int
 	Cmp(v Value) int
-	Set(v Value)
 
 	add(Value) (Value, error)
 	subtract(Value) (Value, error)
@@ -33,53 +30,9 @@ type Value interface {
 	rightshift(Value) (Value, error)
 	and(Value) (Value, error)
 	or(Value) (Value, error)
-
-	setId(string)
-	eng() Value
-	skip() bool
 }
 
-type Meta struct {
-	Scope string
-	Id    string
-	Pos   int
-	Eng   Value
-}
-
-func (m *Meta) Set(v Value) {
-	m.Eng = v
-}
-
-func (m *Meta) Offset() int {
-	return m.Pos
-}
-
-func (m *Meta) String() string {
-	i := m.Id
-	if m.Scope != "" {
-		i = fmt.Sprintf("%s.%s", m.Scope, i)
-	}
-	return i
-}
-
-func (m *Meta) setId(s string) {
-	m.Id = s
-}
-
-func (m *Meta) skip() bool {
-	return len(m.Id) == 0 || m.Id[0] == underscore
-}
-
-func (m *Meta) eng() Value {
-	if m.Eng == nil {
-		return &Null{}
-	}
-	return m.Eng
-}
-
-type Null struct {
-	Meta
-}
+type Null struct {}
 
 func (n *Null) Cmp(v Value) int {
 	if _, ok := v.(*Null); ok {
@@ -129,7 +82,6 @@ func (n *Null) or(v Value) (Value, error) {
 }
 
 type Boolean struct {
-	Meta
 	Raw bool
 }
 
@@ -159,7 +111,6 @@ func (b *Boolean) and(_ Value) (Value, error)        { return nil, ErrUnsupporte
 func (b *Boolean) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type Int struct {
-	Meta
 	Raw int64
 }
 
@@ -264,7 +215,6 @@ func (i *Int) or(v Value) (Value, error) {
 }
 
 type Uint struct {
-	Meta
 	Raw uint64
 }
 
@@ -365,7 +315,6 @@ func (i *Uint) or(v Value) (Value, error) {
 }
 
 type Real struct {
-	Meta
 	Raw float64
 }
 
@@ -429,7 +378,6 @@ func (r *Real) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
 func (r *Real) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type Bytes struct {
-	Meta
 	Raw []byte
 }
 
@@ -453,7 +401,6 @@ func (b *Bytes) and(_ Value) (Value, error)        { return nil, ErrUnsupported 
 func (b *Bytes) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type String struct {
-	Meta
 	Raw string
 }
 

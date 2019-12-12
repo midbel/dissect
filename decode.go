@@ -105,7 +105,7 @@ type state struct {
 	Block
 	data Block
 
-	Values []Value
+	// Values []Value
 	Fields []Field
 	files  map[string]*os.File
 
@@ -172,7 +172,8 @@ func (root *state) reset() {
 	} else {
 		root.buffer = root.buffer[:0]
 	}
-	root.Values = root.Values[:0]
+	// root.Values = root.Values[:0]
+	root.Fields = root.Fields[:0]
 	root.Pos = 0
 }
 
@@ -197,46 +198,39 @@ func (root *state) Size() int {
 	return len(root.buffer) * numbit
 }
 
-func (root *state) ResolveInternal(str string) (Value, error) {
+func (root *state) ResolveInternal(str string) (Field, error) {
 	var (
-		meta = Meta{Id: str}
-		val  Value
+		// meta = Meta{Id: str}
+		field = Field{Id: str}
 		err  error
 	)
 	switch str {
 	case "Iter":
-		val = &Int{
-			Meta: meta,
+		field.raw = &Int{
 			Raw:  int64(root.Iter),
 		}
 	case "Loop":
-		val = &Int{
-			Meta: meta,
+		field.raw = &Int{
 			Raw:  int64(root.Loop),
 		}
 	case "Time":
-		val = &Int{
-			Meta: meta,
+		field.raw = &Int{
 			Raw:  time.Now().Unix(),
 		}
 	case "Num":
-		val = &Int{
-			Meta: meta,
-			Raw:  int64(len(root.Values)),
+		field.raw = &Int{
+			Raw:  int64(len(root.Fields)),
 		}
 	case "Pos":
-		val = &Int{
-			Meta: meta,
+		field.raw = &Int{
 			Raw:  int64(root.Pos),
 		}
 	case "Size":
-		val = &Int{
-			Meta: meta,
+		field.raw = &Int{
 			Raw:  int64(root.Size()),
 		}
 	case "File":
-		val = &String{
-			Meta: meta,
+		field.raw = &String{
 			Raw:  root.currentFile,
 		}
 	case "Block":
@@ -244,38 +238,36 @@ func (root *state) ResolveInternal(str string) (Value, error) {
 		if b := root.currentBlock(); b != "" {
 			block = b
 		}
-		val = &String{
-			Meta: meta,
+		field.raw = &String{
 			Raw:  block,
 		}
 	case "Path":
-		val = &String{
-			Meta: meta,
+		field.raw = &String{
 			Raw:  root.path(),
 		}
 	default:
 		err = fmt.Errorf("%s: unknown internal value", str)
 	}
-	return val, err
+	return field, err
 }
 
-func (root *state) ResolveValue(n string) (Value, error) {
-	for i := len(root.Values) - 1; i >= 0; i-- {
-		v := root.Values[i]
-		if v.String() == n {
+func (root *state) ResolveValue(n string) (Field, error) {
+	for i := len(root.Fields) - 1; i >= 0; i-- {
+		v := root.Fields[i]
+		if v.Id == n {
 			return v, nil
 		}
 	}
-	return nil, fmt.Errorf("%s: value not defined", n)
+	return Field{}, fmt.Errorf("%s: field not defined", n)
 }
 
 func (root *state) DeleteValue(n string) {
 	for i := 0; ; i++ {
-		if i >= len(root.Values) {
+		if i >= len(root.Fields) {
 			break
 		}
-		if v := root.Values[i]; v.String() == n {
-			root.Values = append(root.Values[:i], root.Values[i+1:]...)
+		if v := root.Fields[i]; v.Id == n {
+			root.Fields = append(root.Fields[:i], root.Fields[i+1:]...)
 		}
 	}
 }
@@ -367,9 +359,7 @@ func (root *state) decodeNodes(nodes []Node) error {
 			if err != nil {
 				return err
 			}
-			if val != nil {
-				root.Values = append(root.Values, val)
-			}
+			root.Fields = append(root.Fields, val)
 		case Del:
 			for _, n := range n.nodes {
 				r, ok := n.(Reference)
@@ -407,17 +397,13 @@ func (root *state) decodeNodes(nodes []Node) error {
 			if err != nil {
 				return err
 			}
-			if val != nil {
-				root.Values = append(root.Values, val)
-			}
+			root.Fields = append(root.Fields, val)
 		case Parameter:
 			val, err := root.decodeParameter(n)
 			if err != nil {
 				return err
 			}
-			if val != nil {
-				root.Values = append(root.Values, val)
-			}
+			root.Fields = append(root.Fields, val)
 		case Block:
 			if err := root.decodeBlock(n); err != nil {
 				return err
@@ -498,7 +484,7 @@ func (root *state) decodePrint(p Print) error {
 	if p.file.Type == Ident {
 		v, err := root.ResolveValue(file)
 		if err == nil {
-			file = asString(v)
+			file = asString(v.Raw())
 		}
 	}
 	w, err := root.openFile(file, false)
@@ -519,7 +505,7 @@ func (root *state) decodePrint(p Print) error {
 	return print(w, resolveValues(root, p.values))
 }
 
-func (root *state) decodeParameter(p Parameter) (Value, error) {
+func (root *state) decodeParameter(p Parameter) (Field, error) {
 	var (
 		bits   int
 		offset = root.Pos % numbit
@@ -530,19 +516,19 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	case Ident, Text:
 		v, err := root.ResolveValue(p.size.Literal)
 		if err != nil {
-			return nil, err
+			return Field{}, err
 		}
-		bits = int(asInt(v))
+		bits = int(asInt(v.raw))
 	case Integer:
 		v, _ := strconv.ParseInt(p.size.Literal, 0, 64)
 		bits = int(v)
 	default:
-		return nil, fmt.Errorf("unexpected token type")
+		return Field{}, fmt.Errorf("unexpected token type")
 	}
 
 	var (
 		err error
-		raw Value
+		raw Field
 	)
 
 	switch p.is() {
@@ -552,17 +538,17 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 			break
 		}
 		if err := root.growBuffer(bits * numbit); err != nil {
-			return nil, err
+			return Field{}, err
 		}
 		raw, err = root.decodeBytes(p, bits, index)
 		bits *= numbit
 	default:
 		if err := root.growBuffer(bits * numbit); err != nil {
-			return nil, err
+			return Field{}, err
 		}
 		raw, err = root.decodeNumber(p, bits, index, offset)
 		if err == nil {
-			err = root.evalApply(raw, p.apply)
+			raw, err = root.evalApply(raw, p.apply)
 		}
 	}
 	if err != nil {
@@ -571,10 +557,10 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	if p.expect != nil {
 		expect, err := eval(p.expect, root)
 		if err != nil {
-			return nil, err
+			return Field{}, err
 		}
-		if cmp := raw.Cmp(expect); cmp != 0 {
-			return nil, fmt.Errorf("%s expectation failed: want %s, got %s", p, expect, raw)
+		if cmp := raw.Raw().Cmp(expect); cmp != 0 {
+			return Field{}, fmt.Errorf("%s expectation failed: want %s, got %s", p, expect, raw)
 		}
 	}
 	root.Pos += bits
@@ -582,78 +568,71 @@ func (root *state) decodeParameter(p Parameter) (Value, error) {
 	return raw, nil
 }
 
-func (root *state) decodeBytes(p Parameter, bits, index int) (Value, error) {
-	var (
-		meta = Meta{Id: p.id.Literal, Pos: root.Pos}
-		raw  Value
-	)
+func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
+	raw := Field{
+		Id: p.id.Literal,
+		Pos: root.Pos,
+	}
 	if n := root.Size() / numbit; n < index+bits {
-		return nil, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)
+		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)
 	}
 	switch p.is() {
 	case kindBytes:
-		raw = &Bytes{
-			Meta: meta,
+		raw.raw = &Bytes{
 			Raw:  root.buffer[index : index+bits],
 		}
 	case kindString:
 		str := root.buffer[index : index+bits]
-		raw = &String{
-			Meta: meta,
+		raw.raw = &String{
 			Raw:  strings.Trim(string(str), "\x00"),
 		}
 	default:
-		return nil, fmt.Errorf("unsupported type: %s", p.is())
+		return Field{}, fmt.Errorf("unsupported type: %s", p.is())
 	}
 	return raw, nil
 }
 
-func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Value, error) {
+func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, error) {
 	var (
 		need  = numbytes(bits)
 		shift = (numbit * need) - (offset + bits)
 		mask  = 1
-		raw   Value
+		raw   Field
 	)
 	if bits > 1 {
 		mask = (1 << bits) - 1
 	}
 	if n := root.Size() / numbit; n < index+need {
-		// fmt.Println(index, need, len(root.buffer))
-		return nil, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+need)-n, p)
+		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+need)-n, p)
 	}
-	meta := Meta{
-		Id:  p.id.Literal,
-		Pos: root.Pos,
-	}
+	raw.Id = p.id.Literal
+	raw.Pos = root.Pos
 	var (
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
 		dat = btoi(buf, shift, mask)
 	)
 	switch p.is() {
 	case kindInt: // signed integer
-		raw = &Int{
-			Meta: meta,
+		raw.raw = &Int{
 			Raw:  int64(dat),
 		}
 	case kindUint: // unsigned integer
-		raw = &Uint{
-			Meta: meta,
+		raw.raw = &Uint{
 			Raw:  dat,
 		}
 	case kindFloat: // float
-		raw = &Real{
-			Meta: meta,
+		raw.raw = &Real{
 			Raw:  math.Float64frombits(dat),
 		}
 	default:
-		return nil, fmt.Errorf("unsupported type: %s", p.is())
+		return Field{}, fmt.Errorf("unsupported type: %s", p.is())
 	}
 	return raw, nil
 }
 
-func (root *state) decodeLet(e Let) (Value, error) {
-	return eval(e.expr, root)
+func (root *state) decodeLet(e Let) (Field, error) {
+	// return eval(e.expr, root)
+	return Field{}, nil
 }
 
 func (root *state) decodeExit(e Exit) error {
@@ -669,7 +648,7 @@ func (root *state) decodeExit(e Exit) error {
 		if err != nil {
 			return err
 		}
-		code = asInt(v)
+		code = asInt(v.raw)
 	default:
 		return fmt.Errorf("unexpected token type")
 	}
@@ -917,7 +896,7 @@ func (root *state) decodeInclude(n Include) error {
 	return err
 }
 
-func (root *state) evalApply(v Value, n Node) error {
+func (root *state) evalApply(v Field, n Node) (Field, error) {
 	var (
 		pair Pair
 		err  error
@@ -928,11 +907,10 @@ func (root *state) evalApply(v Value, n Node) error {
 	case Pair:
 		pair = n
 	default:
-		v.Set(v)
-		return nil
+		return v, nil
 	}
 	if err != nil {
-		return err
+		return Field{}, err
 	}
 	var fn func([]Constant, Value) (Value, error)
 	switch pair.kind.Literal {
@@ -943,11 +921,11 @@ func (root *state) evalApply(v Value, n Node) error {
 	case kwPoint:
 		fn = root.evalPoint
 	}
-	x, err := fn(pair.nodes, v)
+	x, err := fn(pair.nodes, v.raw)
 	if err == nil {
-		v.Set(x)
+		v.eng = x
 	}
-	return err
+	return v, err
 }
 
 func (root *state) evalPoint(cs []Constant, v Value) (Value, error) {

@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-type printFunc func(io.Writer, []Value) error
+type printFunc func(io.Writer, []Field) error
 
 var printers = map[struct{ Format, Method string }]printFunc{
 	{Format: fmtCSV, Method: methRaw}:     csvPrintRaw,
@@ -24,7 +24,7 @@ var printers = map[struct{ Format, Method string }]printFunc{
 	{Format: fmtSexp, Method: methBoth}:   sexpPrintBoth,
 }
 
-func sexpPrintDebug(w io.Writer, values []Value) error {
+func sexpPrintDebug(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
@@ -44,9 +44,9 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 		buf.WriteRune(colon)
 		buf.WriteString(v.String())
 		buf.WriteRune(colon)
-		buf.Write(appendRaw(dat, v, false))
+		buf.Write(appendRaw(dat, v.Raw(), false))
 		buf.WriteRune(colon)
-		buf.Write(appendEng(dat, v, false))
+		buf.Write(appendEng(dat, v.Eng(), false))
 
 		buf.WriteRune(rparen)
 	}
@@ -56,20 +56,20 @@ func sexpPrintDebug(w io.Writer, values []Value) error {
 	return err
 }
 
-func sexpPrintRaw(w io.Writer, values []Value) error {
+func sexpPrintRaw(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
-		buf.Write(appendRaw(dat, v, true))
+		buf.Write(appendRaw(dat, v.Raw(), true))
 	}
 	buf.WriteRune(rparen)
 
@@ -77,20 +77,20 @@ func sexpPrintRaw(w io.Writer, values []Value) error {
 	return err
 }
 
-func sexpPrintEng(w io.Writer, values []Value) error {
+func sexpPrintEng(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
-		buf.Write(appendEng(dat, v, true))
+		buf.Write(appendEng(dat, v.Eng(), true))
 	}
 	buf.WriteRune(rparen)
 
@@ -98,23 +98,23 @@ func sexpPrintEng(w io.Writer, values []Value) error {
 	return err
 }
 
-func sexpPrintBoth(w io.Writer, values []Value) error {
+func sexpPrintBoth(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 32)
 	)
 	buf.WriteRune(lparen)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(space)
 		}
 		buf.WriteRune(lparen)
-		buf.Write(appendRaw(dat, v, true))
+		buf.Write(appendRaw(dat, v.Raw(), true))
 		buf.WriteRune(space)
-		buf.Write(appendEng(dat, v, true))
+		buf.Write(appendEng(dat, v.Eng(), true))
 		buf.WriteRune(rparen)
 	}
 	buf.WriteRune(rparen)
@@ -123,7 +123,7 @@ func sexpPrintBoth(w io.Writer, values []Value) error {
 	return err
 }
 
-func csvPrintDebug(w io.Writer, values []Value) error {
+func csvPrintDebug(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 64)
@@ -147,11 +147,11 @@ func csvPrintDebug(w io.Writer, values []Value) error {
 		buf.WriteRune('"')
 		buf.WriteRune(comma)
 		buf.WriteRune('"')
-		buf.Write(appendRaw(dat, v, true))
+		buf.Write(appendRaw(dat, v.Raw(), true))
 		buf.WriteRune('"')
 		buf.WriteRune(comma)
 		buf.WriteRune('"')
-		buf.Write(appendEng(dat, v, true))
+		buf.Write(appendEng(dat, v.Eng(), true))
 		buf.WriteRune('"')
 		buf.WriteString("\r\n")
 
@@ -162,20 +162,20 @@ func csvPrintDebug(w io.Writer, values []Value) error {
 	return nil
 }
 
-func csvPrintRaw(w io.Writer, values []Value) error {
+func csvPrintRaw(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
 		buf.WriteRune('"')
-		buf.Write(appendRaw(dat, v, true))
+		buf.Write(appendRaw(dat, v.Raw(), true))
 		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
@@ -183,20 +183,20 @@ func csvPrintRaw(w io.Writer, values []Value) error {
 	return err
 }
 
-func csvPrintEng(w io.Writer, values []Value) error {
+func csvPrintEng(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
 		buf.WriteRune('"')
-		buf.Write(appendEng(dat, v, true))
+		buf.Write(appendEng(dat, v.Eng(), true))
 		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
@@ -204,24 +204,24 @@ func csvPrintEng(w io.Writer, values []Value) error {
 	return err
 }
 
-func csvPrintBoth(w io.Writer, values []Value) error {
+func csvPrintBoth(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
 		dat = make([]byte, 0, 64)
 	)
 	for i, v := range values {
-		if v.skip() {
+		if v.Skip() {
 			continue
 		}
 		if i > 0 {
 			buf.WriteRune(comma)
 		}
 		buf.WriteRune('"')
-		buf.Write(appendRaw(dat, v, true))
+		buf.Write(appendRaw(dat, v.Raw(), true))
 		buf.WriteRune('"')
 		buf.WriteRune(comma)
 		buf.WriteRune('"')
-		buf.Write(appendEng(dat, v, true))
+		buf.Write(appendEng(dat, v.Eng(), true))
 		buf.WriteRune('"')
 	}
 	buf.WriteString("\r\n")
@@ -229,11 +229,11 @@ func csvPrintBoth(w io.Writer, values []Value) error {
 	return err
 }
 
-func resolveValues(root *state, vs []Token) []Value {
+func resolveValues(root *state, vs []Token) []Field {
 	if len(vs) == 0 {
-		return root.Values
+		return root.Fields
 	}
-	xs := make([]Value, 0, len(vs))
+	xs := make([]Field, 0, len(vs))
 	for _, v := range vs {
 		x, err := root.ResolveValue(v.Literal)
 		if err != nil {
