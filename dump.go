@@ -18,15 +18,23 @@ func Stat(r io.Reader) error {
 		return nil
 	}
 	for _, n := range block.nodes {
-		block, ok := n.(Block)
-		if !ok {
+		var bck Block
+		switch n := n.(type) {
+		case Block:
+			bck = n
+		case Data:
+			bck = n.Block
+		default:
+			continue
+		}
+		if bck.id.Literal == kwDeclare || bck.id.Literal == kwDefine {
 			continue
 		}
 		var (
 			size int64
 			count int
 		)
-		for _, n := range block.nodes {
+		for _, n := range bck.nodes {
 			p, ok := n.(Parameter)
 			if !ok {
 				continue
@@ -42,7 +50,7 @@ func Stat(r io.Reader) error {
 			size += z
 			count++
 		}
-		fmt.Printf("%16s: %5d bits, %5d bytes, %3d parameters\n", block.id, size, size/numbit, count)
+		fmt.Printf("%16s: %5d bits, %5d bytes, %3d parameters\n", bck.id, size, size/numbit, count)
 	}
 	return nil
 }
