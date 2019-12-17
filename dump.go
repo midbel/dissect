@@ -31,12 +31,12 @@ func Stat(r io.Reader) error {
 			continue
 		}
 		var (
-			size int64
+			size  int64
 			count int
 		)
 		for _, n := range bck.nodes {
 			count++
-			
+
 			p, ok := n.(Parameter)
 			if !ok {
 				continue

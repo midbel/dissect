@@ -549,7 +549,7 @@ type Data struct {
 
 type Block struct {
 	ns string
-	
+
 	id    Token
 	nodes []Node
 

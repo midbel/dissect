@@ -576,7 +576,7 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 	if n := root.Size() / numbit; n < index+bits {
 		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s.%s)", errShort, (index+bits)-n, root.currentBlock(), p)
 	}
-	switch p.is() {
+	switch kind := p.is(); kind {
 	case kindBytes:
 		raw.raw = &Bytes{
 			Raw: root.buffer[index : index+bits],
@@ -587,7 +587,7 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 			Raw: strings.Trim(string(str), "\x00"),
 		}
 	default:
-		return Field{}, fmt.Errorf("unsupported type: %s", p.is())
+		return Field{}, fmt.Errorf("unsupported type: %s", kind)
 	}
 	return raw, nil
 }
@@ -605,7 +605,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s.%s)", errShort, (index+need)-n, root.currentBlock(), p)
 	}
 	raw := Field{
-		Id: p.id.Literal,
+		Id:  p.id.Literal,
 		Pos: root.Pos,
 		Len: bits,
 	}
@@ -613,7 +613,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
 		dat = btoi(buf, shift, mask)
 	)
-	switch p.is() {
+	switch kind := p.is(); kind {
 	case kindInt: // signed integer
 		raw.raw = &Int{
 			Raw: int64(dat),
@@ -627,7 +627,7 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 			Raw: math.Float64frombits(dat),
 		}
 	default:
-		return Field{}, fmt.Errorf("unsupported type: %s", p.is())
+		return Field{}, fmt.Errorf("unsupported type: %s", kind)
 	}
 	return raw, nil
 }
