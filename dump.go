@@ -35,6 +35,8 @@ func Stat(r io.Reader) error {
 			count int
 		)
 		for _, n := range bck.nodes {
+			count++
+			
 			p, ok := n.(Parameter)
 			if !ok {
 				continue
@@ -48,7 +50,6 @@ func Stat(r io.Reader) error {
 				continue
 			}
 			size += z
-			count++
 		}
 		fmt.Printf("%16s: %5d bits, %5d bytes, %3d parameters\n", bck.id, size, size/numbit, count)
 	}

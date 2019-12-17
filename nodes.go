@@ -548,6 +548,7 @@ type Data struct {
 }
 
 type Block struct {
+	namespace string
 	id    Token
 	nodes []Node
 
