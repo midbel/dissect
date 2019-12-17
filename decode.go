@@ -70,6 +70,7 @@ type Field struct {
 	Id    string
 	Pos   int
 	Len   int
+	Ix    int
 
 	raw Value
 	eng Value
@@ -562,7 +563,7 @@ func (root *state) decodeParameter(p Parameter) (Field, error) {
 		}
 	}
 	root.Pos += bits
-
+	raw.Block, raw.Ix = root.currentBlock(), root.Iter
 	return raw, nil
 }
 
