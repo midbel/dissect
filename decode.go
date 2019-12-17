@@ -574,7 +574,7 @@ func (root *state) decodeBytes(p Parameter, bits, index int) (Field, error) {
 		Len: bits * numbit,
 	}
 	if n := root.Size() / numbit; n < index+bits {
-		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+bits)-n, p)
+		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s.%s)", errShort, (index+bits)-n, root.currentBlock(), p)
 	}
 	switch p.is() {
 	case kindBytes:
@@ -597,17 +597,18 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 		need  = numbytes(bits)
 		shift = (numbit * need) - (offset + bits)
 		mask  = 1
-		raw   Field
 	)
 	if bits > 1 {
 		mask = (1 << bits) - 1
 	}
 	if n := root.Size() / numbit; n < index+need {
-		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s)", errShort, (index+need)-n, p)
+		return Field{}, fmt.Errorf("%w: missing %d bytes (decoding %s.%s)", errShort, (index+need)-n, root.currentBlock(), p)
 	}
-	raw.Id = p.id.Literal
-	raw.Pos = root.Pos
-	raw.Len = bits
+	raw := Field{
+		Id: p.id.Literal,
+		Pos: root.Pos,
+		Len: bits,
+	}
 	var (
 		buf = swapBytes(root.buffer[index:index+need], p.endian.Literal)
 		dat = btoi(buf, shift, mask)
