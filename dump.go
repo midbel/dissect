@@ -4,8 +4,48 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+func Stat(r io.Reader) error {
+	n, err := Parse(r)
+	if err != nil {
+		return err
+	}
+	block, ok := n.(Block)
+	if !ok {
+		return nil
+	}
+	for _, n := range block.nodes {
+		block, ok := n.(Block)
+		if !ok {
+			continue
+		}
+		var (
+			size int64
+			count int
+		)
+		for _, n := range block.nodes {
+			p, ok := n.(Parameter)
+			if !ok {
+				continue
+			}
+			z, _ := strconv.ParseInt(p.size.Literal, 0, 64)
+			switch p.is() {
+			case kindInt, kindUint, kindFloat:
+			case kindString, kindBytes:
+				z *= numbit
+			default:
+				continue
+			}
+			size += z
+			count++
+		}
+		fmt.Printf("%16s: %5d bits, %5d bytes, %3d parameters\n", block.id, size, size/numbit, count)
+	}
+	return nil
+}
 
 func Dump(n Node) error {
 	return dumpNode(n, 0)
