@@ -3,6 +3,7 @@ package dissect
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -343,6 +344,10 @@ func (root *state) decodeNodes(nodes []Node) error {
 			return root.decodeBreak(n)
 		case Continue:
 			return root.decodeContinue(n)
+		case Copy:
+			if err := root.decodeCopy(n); err != nil {
+				return err
+			}
 		case Echo:
 			if err := root.decodeEcho(n); err != nil {
 				return err
@@ -469,9 +474,54 @@ func (root *state) decodeEcho(e Echo) error {
 	return err
 }
 
+func (root *state) decodeCopy(c Copy) error {
+	if c.predicate != nil {
+		v, err := eval(c.predicate, root)
+		if err != nil {
+			return err
+		}
+		if !isTrue(v) {
+			return nil
+		}
+	}
+
+	v, err := eval(c.count, root)
+	if err != nil {
+		return err
+	}
+
+	file := c.file.Literal
+	if c.file.Type == Ident {
+		v, err := root.ResolveValue(file)
+		if err == nil {
+			file = asString(v.Raw())
+		}
+	}
+	w, err := root.openFile(file, false)
+	if err != nil {
+		return err
+	}
+
+	count := int(asInt(v))
+	if err := root.growBuffer(count); err != nil {
+		return err
+	}
+	var (
+		index = root.Pos / numbit
+		buf   = root.buffer[index : index+count]
+	)
+	switch c.format.Literal {
+	case kwString:
+		_, err = io.WriteString(w, hex.EncodeToString(buf))
+	case kwBytes:
+		_, err = w.Write(buf)
+	}
+	return err
+}
+
 func (root *state) decodePrint(p Print) error {
-	if p.expr != nil {
-		v, err := eval(p.expr, root)
+	if p.predicate != nil {
+		v, err := eval(p.predicate, root)
 		if err != nil {
 			return err
 		}

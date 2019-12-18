@@ -273,13 +273,29 @@ func (e Echo) String() string {
 	return buf.String()
 }
 
+type Copy struct {
+	pos       Position
+	count     Expression
+	file      Token
+	format    Token
+	predicate Expression
+}
+
+func (c Copy) Pos() Position {
+	return c.pos
+}
+
+func (c Copy) String() string {
+	return fmt.Sprintf("copy(%s)", c.file.Literal)
+}
+
 type Print struct {
-	pos    Position
-	file   Token
-	method Token // eng, raw, both, debug (default)
-	format Token // csv,...
-	values []Token
-	expr   Expression
+	pos       Position
+	file      Token
+	method    Token // eng, raw, both, debug (default)
+	format    Token // csv,...
+	values    []Token
+	predicate Expression
 }
 
 func (p Print) Pos() Position {

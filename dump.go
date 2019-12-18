@@ -73,10 +73,16 @@ func dumpNode(n Node, level int) error {
 	switch n := n.(type) {
 	case Token:
 		fmt.Printf("%stoken(literal=%s, pos=%s)", indent, n.Literal, n.Pos())
+	case Copy:
+		expr := "???"
+		if n.predicate != nil {
+			expr = n.predicate.String()
+		}
+		fmt.Printf("%scopy(file=%s, format=%s, count=%s, expr=%s, pos=%s)", indent, n.file, n.format, n.count, expr, n.Pos())
 	case Print:
 		expr := "???"
-		if n.expr != nil {
-			expr = n.expr.String()
+		if n.predicate != nil {
+			expr = n.predicate.String()
 		}
 		fmt.Printf("%sprint(file=%s, format=%s, method=%s, expr=%s, pos=%s)", indent, n.file, n.format, n.method, expr, n.Pos())
 		if len(n.values) > 0 {

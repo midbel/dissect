@@ -102,6 +102,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwPrint:    p.parsePrint,
 		kwEcho:     p.parseEcho,
 		kwIf:       p.parseIf,
+		kwCopy:     p.parseCopy,
 	}
 	p.typedef = make(map[string]typedef)
 	if err := p.pushFrame(r); err != nil {
@@ -139,6 +140,102 @@ func (p *Parser) Parse() (Node, error) {
 		}
 	}
 	return root, nil
+}
+
+func (p *Parser) parseCopy() (Node, error) {
+	c := Copy{
+		pos:    p.curr.Pos(),
+		file:   Token{Literal: "-", Type: Ident},
+		format: Token{Literal: kwBytes, Type: Keyword},
+	}
+	p.nextToken()
+	if p.curr.Type != lsquare {
+		return nil, p.expectedError("[")
+	}
+	p.nextToken()
+	e, err := p.parsePredicate()
+	if err != nil {
+		return nil, err
+	}
+	c.count = e
+
+	switch p.curr.Type {
+	case Keyword:
+		if kw := p.curr.Literal; kw == kwTo {
+			err = p.parseCopyTo(&c)
+		} else if kw == kwAs {
+			err = p.parseCopyAs(&c)
+		} else if kw == kwIf {
+			err = p.parseCopyIf(&c)
+		} else {
+			err = p.unexpectedError()
+		}
+	case Newline:
+	default:
+		err = p.unexpectedError()
+	}
+	return c, err
+}
+
+func (p *Parser) parseCopyTo(c *Copy) error {
+	if p.curr.Literal != kwTo {
+		return p.expectedError(kwTo)
+	}
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return p.expectedError("ident")
+	}
+	c.file = p.curr
+	p.nextToken()
+
+	switch p.curr.Type {
+	case Keyword:
+		if kw := p.curr.Literal; kw == kwAs {
+			return p.parseCopyAs(c)
+		} else if kw == kwIf {
+			return p.parseCopyIf(c)
+		} else {
+			return p.unexpectedError()
+		}
+	case Newline:
+	default:
+		return p.unexpectedError()
+	}
+	return nil
+}
+
+func (p *Parser) parseCopyAs(c *Copy) error {
+	if p.curr.Literal != kwTo {
+		return p.expectedError(kwTo)
+	}
+	p.nextToken()
+	if p.curr.Type != Keyword {
+		return p.unexpectedError()
+	}
+	switch p.curr.Literal {
+	case kwString, kwBytes:
+		c.format = Token{Literal: p.curr.Literal}
+	default:
+		return p.unexpectedError()
+	}
+	p.nextToken()
+
+	if p.curr.Type == Keyword {
+		return p.parseCopyIf(c)
+	}
+	return nil
+}
+
+func (p *Parser) parseCopyIf(c *Copy) error {
+	if p.curr.Literal != kwIf {
+		return p.expectedError(kwIf)
+	}
+	p.nextToken()
+	e, err := p.parsePredicate()
+	if err == nil {
+		c.predicate = e
+	}
+	return err
 }
 
 func (p *Parser) isClosed() error {
@@ -358,7 +455,7 @@ func (p *Parser) parsePrintIf(f *Print) error {
 	p.nextToken()
 	e, err := p.parsePredicate()
 	if err == nil {
-		f.expr = e
+		f.predicate = e
 	}
 	return err
 }
