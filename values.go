@@ -126,6 +126,16 @@ func (t *Time) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
 func (t *Time) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 func (t *Time) Cmp(v Value) int {
+	x, ok := v.(*Time)
+	if !ok {
+		return -1
+	}
+	if t.Raw.Before(x.Raw) {
+		return -1
+	}
+	if t.Raw.After(x.Raw) {
+		return 1
+	}
 	return 0
 }
 

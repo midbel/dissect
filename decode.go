@@ -234,7 +234,7 @@ func (root *state) ResolveInternal(str string) (Field, error) {
 			Raw: root.currentFile,
 		}
 	case "Block":
-		block := "block"
+		block := "/"
 		if b := root.currentBlock(); b != "" {
 			block = b
 		}
@@ -431,16 +431,17 @@ func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 		}
 		return root.stdout, nil
 	}
+	path := root.path()
 	if file == "/dev/null" {
 		return ioutil.Discard, nil
 	}
-	w, ok := root.files[root.path()]
+	w, ok := root.files[path]
 	if ok && w.Name() == file {
 		return w, nil
 	}
 	if ok {
 		w.Close()
-		delete(root.files, root.path())
+		delete(root.files, path)
 	}
 	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, err
@@ -449,7 +450,7 @@ func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	root.files[root.path()] = w
+	root.files[path] = w
 	return w, nil
 }
 

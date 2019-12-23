@@ -86,7 +86,7 @@ data (
 
 #### declare
 
-#### import
+#### include
 
 #### typedef
 
@@ -96,9 +96,9 @@ data (
 
 #### repeat
 
-#### break
+##### break
 
-#### continue
+##### continue
 
 #### include
 
@@ -114,9 +114,27 @@ data (
 
 #### echo
 
+#### copy
+
 #### let
 
 #### del
 
 
 ### internal variables
+
+#### Iter
+
+#### Loop
+
+#### Num
+
+#### Pos
+
+#### Size
+
+#### File
+
+#### Block
+
+#### Path
