@@ -137,7 +137,10 @@ func walkFiles(files []string) <-chan string {
 }
 
 func globFiles(f string, queue chan<- string) {
-	g := glob.New("", f)
+	g, err := glob.New("", f)
+	if err != nil {
+		return
+	}
 	for n := g.Glob(); n != ""; n = g.Glob() {
 		i, err := os.Stat(n)
 		if err == nil && i.Mode().IsRegular() {
