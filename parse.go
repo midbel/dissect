@@ -103,6 +103,7 @@ func Parse(r io.Reader) (Node, error) {
 		kwEcho:     p.parseEcho,
 		kwIf:       p.parseIf,
 		kwCopy:     p.parseCopy,
+		kwPush:     p.parsePush,
 	}
 	p.typedef = make(map[string]typedef)
 	if err := p.pushFrame(r); err != nil {
@@ -140,6 +141,30 @@ func (p *Parser) Parse() (Node, error) {
 		}
 	}
 	return root, nil
+}
+
+func (p *Parser) parsePush() (Node, error) {
+	h := Push{
+		pos: p.curr.Pos(),
+	}
+	p.nextToken()
+	if !p.curr.isIdent() {
+		return nil, p.expectedError("ident")
+	}
+	h.id = p.curr
+	p.nextToken()
+	if p.curr.Type == Keyword {
+		if p.curr.Literal != kwIf {
+			return nil, p.unexpectedError()
+		}
+		p.nextToken()
+		e, err := p.parsePredicate()
+		if err != nil {
+			return nil, err
+		}
+		h.expr = e
+	}
+	return h, nil
 }
 
 func (p *Parser) parseCopy() (Node, error) {

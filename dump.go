@@ -92,6 +92,12 @@ func dumpNode(n Node, level int) error {
 			}
 			fmt.Printf("%s)", indent)
 		}
+	case Push:
+		expr := "???"
+		if n.expr != nil {
+			expr = n.expr.String()
+		}
+		fmt.Printf("%spush(id=%s, expr=%s, pos=%s)", indent, n.id, expr, n.Pos())
 	case Echo:
 		fmt.Printf("%secho(string=%s, pos=%s)", indent, n, n.Pos())
 	case Data:

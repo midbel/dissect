@@ -175,6 +175,7 @@ func (root *state) reset() {
 		root.buffer = root.buffer[:0]
 	}
 	root.Fields = root.Fields[:0]
+	root.blocks = root.blocks[:0]
 	root.Pos = 0
 }
 
@@ -239,7 +240,7 @@ func (root *state) ResolveInternal(str string) (Field, error) {
 			block = b
 		}
 		field.raw = &String{
-			Raw: block,
+			Raw: strings.TrimRight(block, "$"),
 		}
 	case "Path":
 		field.raw = &String{
@@ -277,7 +278,7 @@ func (root *state) currentBlock() string {
 	if n == 0 {
 		return "/"
 	}
-	return root.blocks[n-1]
+	return strings.TrimRight(root.blocks[n-1], "$")
 }
 
 func (root *state) path() string {
@@ -292,6 +293,11 @@ func (root *state) popBlock() {
 	n := len(root.blocks)
 	if n > 0 {
 		root.blocks = root.blocks[:n-1]
+		n--
+	}
+	n--
+	if n > 0 && strings.HasSuffix(root.blocks[n], "$") {
+		root.popBlock()
 	}
 }
 
@@ -372,6 +378,8 @@ func (root *state) decodeNodes(nodes []Node) error {
 				}
 				root.DeleteValue(r.id.Literal)
 			}
+		case Push:
+			root.decodePush(n)
 		case Peek:
 			if err := root.decodePeek(n); err != nil {
 				return err
@@ -435,6 +443,7 @@ func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 	if file == "/dev/null" {
 		return ioutil.Discard, nil
 	}
+
 	w, ok := root.files[path]
 	if ok && w.Name() == file {
 		return w, nil
@@ -452,6 +461,27 @@ func (root *state) openFile(file string, echo bool) (io.Writer, error) {
 	}
 	root.files[path] = w
 	return w, nil
+}
+
+func (root *state) decodePush(p Push) error {
+	if p.expr != nil {
+		v, err := eval(p.expr, root)
+		if err != nil {
+			return err
+		}
+		if !isTrue(v) {
+			return nil
+		}
+	}
+	id := p.id.Literal
+	if p.id.Type == Ident {
+		v, err := root.ResolveValue(id)
+		if err == nil {
+			id = asString(v.Raw())
+		}
+	}
+	root.pushBlock(id + "$")
+	return nil
 }
 
 func (root *state) decodeEcho(e Echo) error {

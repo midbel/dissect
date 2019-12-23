@@ -404,6 +404,20 @@ func (t Let) Pos() Position {
 	return t.id.Pos()
 }
 
+type Push struct {
+	pos  Position
+	id   Token
+	expr Expression
+}
+
+func (p Push) String() string {
+	return fmt.Sprintf("push(%s)", p.id.Literal)
+}
+
+func (p Push) Pos() Position {
+	return p.pos
+}
+
 type Parameter struct {
 	id     Token
 	size   Token
