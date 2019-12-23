@@ -11,6 +11,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -432,35 +433,35 @@ func (root *state) decodeNodes(nodes []Node) error {
 	return nil
 }
 
-func (root *state) openFile(file string, echo bool) (io.Writer, error) {
+func (root *state) openFile(file string, echo bool) (io.Writer, bool, error) {
 	if file == "" || file == "-" {
 		if echo {
-			return root.stderr, nil
+			return root.stderr, false, nil
 		}
-		return root.stdout, nil
+		return root.stdout, false, nil
 	}
 	path := root.path()
 	if file == "/dev/null" {
-		return ioutil.Discard, nil
+		return ioutil.Discard, false, nil
 	}
 
 	w, ok := root.files[path]
 	if ok && w.Name() == file {
-		return w, nil
+		return w, false, nil
 	}
 	if ok {
 		w.Close()
 		delete(root.files, path)
 	}
 	if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
+		return nil, false, err
 	}
 	w, err := os.Create(file)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	root.files[path] = w
-	return w, nil
+	return w, true, nil
 }
 
 func (root *state) decodePush(p Push) error {
@@ -485,7 +486,7 @@ func (root *state) decodePush(p Push) error {
 }
 
 func (root *state) decodeEcho(e Echo) error {
-	w, err := root.openFile(e.file.Literal, true)
+	w, _, err := root.openFile(e.file.Literal, true)
 	if err != nil {
 		return err
 	}
@@ -528,7 +529,7 @@ func (root *state) decodeCopy(c Copy) error {
 			file = asString(v.Raw())
 		}
 	}
-	w, err := root.openFile(file, false)
+	w, _, err := root.openFile(file, false)
 	if err != nil {
 		return err
 	}
@@ -567,7 +568,7 @@ func (root *state) decodePrint(p Print) error {
 			file = asString(v.Raw())
 		}
 	}
-	w, err := root.openFile(file, false)
+	w, created, err := root.openFile(file, false)
 	if err != nil {
 		return err
 	}
@@ -582,7 +583,14 @@ func (root *state) decodePrint(p Print) error {
 	if !ok {
 		return fmt.Errorf("print: unsupported method %s for format %s", p.method, p.format)
 	}
-	return print(w, resolveValues(root, p.values))
+
+	values := resolveValues(root, p.values)
+	if created && k.Format == fmtCSV {
+		if err := csvPrintHeaders(w, k.Method, values); err != nil {
+			return err
+		}
+	}
+	return print(w, values)
 }
 
 func (root *state) decodeParameter(p Parameter) (Field, error) {
@@ -1080,6 +1088,24 @@ func (root *state) evalPoly(cs []Constant, v Value) (Value, error) {
 	return &Real{
 		Raw: eng,
 	}, nil
+}
+
+func resolveValues(root *state, vs []Token) []Field {
+	if len(vs) == 0 {
+		return root.Fields
+	}
+	xs := make([]Field, 0, len(vs))
+	for _, v := range vs {
+		x, err := root.ResolveValue(v.Literal)
+		if err != nil {
+			continue
+		}
+		xs = append(xs, x)
+	}
+	sort.Slice(xs, func(i, j int) bool {
+		return xs[i].Offset() < xs[j].Offset()
+	})
+	return xs
 }
 
 func swapBytes(buf []byte, e string) []byte {

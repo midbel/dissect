@@ -3,9 +3,19 @@ package dissect
 import (
 	"bytes"
 	"io"
-	"sort"
 	"strconv"
+	"strings"
 )
+
+var headersDebug = []string{
+	"bytoff",
+	"bitoff",
+	"block",
+	"param",
+	"len",
+	"raw",
+	"eng",
+}
 
 type printFunc func(io.Writer, []Field) error
 
@@ -125,6 +135,36 @@ func sexpPrintBoth(w io.Writer, values []Field) error {
 	return err
 }
 
+func csvPrintHeaders(w io.Writer, meth string, values []Field) error {
+	var (
+		buf     bytes.Buffer
+		headers []string
+	)
+	if meth == methDebug {
+		headers = headersDebug
+	} else {
+		headers = make([]string, 0, len(values))
+		for i := 0; i < len(values); i++ {
+			if strings.HasPrefix(values[i].Id, "_") {
+				continue
+			}
+			headers = append(headers, values[i].Id)
+		}
+	}
+	for i := 0; i < len(headers); i++ {
+		if i > 0 {
+			buf.WriteRune(comma)
+		}
+		buf.WriteRune('"')
+		buf.WriteString(headers[i])
+		buf.WriteRune('"')
+	}
+	buf.WriteString("\r\n")
+
+	_, err := io.Copy(w, &buf)
+	return err
+}
+
 func csvPrintDebug(w io.Writer, values []Field) error {
 	var (
 		buf bytes.Buffer
@@ -237,22 +277,4 @@ func csvPrintBoth(w io.Writer, values []Field) error {
 	buf.WriteString("\r\n")
 	_, err := io.Copy(w, &buf)
 	return err
-}
-
-func resolveValues(root *state, vs []Token) []Field {
-	if len(vs) == 0 {
-		return root.Fields
-	}
-	xs := make([]Field, 0, len(vs))
-	for _, v := range vs {
-		x, err := root.ResolveValue(v.Literal)
-		if err != nil {
-			continue
-		}
-		xs = append(xs, x)
-	}
-	sort.Slice(xs, func(i, j int) bool {
-		return xs[i].Offset() < xs[j].Offset()
-	})
-	return xs
 }
