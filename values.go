@@ -482,6 +482,7 @@ func appendRaw(buf []byte, v Value, escape bool) []byte {
 		if escape {
 			buf = escapeQuotes(buf)
 		}
+		buf = bytes.TrimSpace(buf)
 	case *Bytes:
 		x := hex.EncodeToString(v.Raw)
 		buf = []byte(x)
