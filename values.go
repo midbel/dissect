@@ -487,15 +487,20 @@ func appendRaw(buf []byte, v Value, escape bool) []byte {
 		x := hex.EncodeToString(v.Raw)
 		buf = []byte(x)
 	case *Time:
-		// buf = strconv.AppendInt(buf, v.Raw.Unix(), 10)
-		buf = v.Raw.AppendFormat(buf, time.RFC3339)
+		buf = strconv.AppendInt(buf, v.Raw.Unix(), 10)
 	default:
 	}
 	return buf
 }
 
 func appendEng(buf []byte, v Value, escape bool) []byte {
-	return appendRaw(buf, v, escape)
+	switch v := v.(type) {
+	case *Time:
+		buf = v.Raw.AppendFormat(buf, time.RFC3339)
+	default:
+		buf = appendRaw(buf, v, escape)
+	}
+	return buf
 }
 
 func escapeQuotes(buf []byte) []byte {
