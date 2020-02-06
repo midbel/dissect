@@ -1221,7 +1221,7 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 	p.nextToken()
 	if p.curr.Type == Keyword {
 		switch lit := p.curr.Literal; lit {
-		case kwInt, kwUint, kwFloat, kwBytes, kwString:
+		case kwInt, kwUint, kwFloat, kwBytes, kwString, kwTime:
 			a.kind, typok = p.curr, true
 			p.nextToken()
 		default:

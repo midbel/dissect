@@ -486,6 +486,9 @@ func appendRaw(buf []byte, v Value, escape bool) []byte {
 	case *Bytes:
 		x := hex.EncodeToString(v.Raw)
 		buf = []byte(x)
+	case *Time:
+		// buf = strconv.AppendInt(buf, v.Raw.Unix(), 10)
+		buf = v.Raw.AppendFormat(buf, time.RFC3339)
 	default:
 	}
 	return buf

@@ -122,6 +122,7 @@ const (
 	kindFloat
 	kindString
 	kindBytes
+	kindTime
 )
 
 const (
@@ -154,6 +155,7 @@ const (
 	kwFloat    = "float"
 	kwString   = "string"
 	kwBytes    = "bytes"
+	kwTime     = "time"
 	kwMatch    = "match"
 	kwWith     = "with"
 	kwAs       = "as"
@@ -193,6 +195,7 @@ var keywords = []string{
 	kwFloat,
 	kwString,
 	kwBytes,
+	kwTime,
 	kwMatch,
 	kwWith,
 	kwAs,

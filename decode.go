@@ -715,6 +715,10 @@ func (root *state) decodeNumber(p Parameter, bits, index, offset int) (Field, er
 		raw.raw = &Real{
 			Raw: math.Float64frombits(dat),
 		}
+	case kindTime:
+		raw.raw = &Time{
+			Raw: time.Unix(int64(dat), 0).UTC(),
+		}
 	default:
 		return Field{}, fmt.Errorf("unsupported type: %s", kind)
 	}
