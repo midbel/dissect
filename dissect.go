@@ -97,6 +97,12 @@ func (k Kind) String() string {
 		return kwString
 	case kindBytes:
 		return kwBytes
+	case kindTime:
+		return kwTime
+	case kindGPS:
+		return fmt.Sprintf("time(%s)", kwGPS)
+	case kindUnix:
+		return fmt.Sprintf("time(%s)", kwUnix)
 	}
 }
 
@@ -123,6 +129,8 @@ const (
 	kindString
 	kindBytes
 	kindTime
+	kindGPS
+	kindUnix
 )
 
 const (
@@ -163,6 +171,8 @@ const (
 	kwTo       = "to"
 	kwBig      = "big"
 	kwLittle   = "little"
+	kwUnix     = "unix"
+	kwGPS      = "gps"
 	kwIf       = "if"
 	kwElse     = "else"
 	kwCopy     = "copy"
@@ -203,6 +213,8 @@ var keywords = []string{
 	kwTo,
 	kwBig,
 	kwLittle,
+	kwUnix,
+	kwGPS,
 	kwIf,
 	kwElse,
 	kwCopy,

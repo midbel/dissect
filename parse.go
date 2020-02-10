@@ -1223,6 +1223,20 @@ func (p *Parser) parseFieldShort(id Token) (Node, error) {
 		switch lit := p.curr.Literal; lit {
 		case kwInt, kwUint, kwFloat, kwBytes, kwString, kwTime:
 			a.kind, typok = p.curr, true
+			if lit == kwTime && p.peek.Type == lparen {
+				p.nextToken()
+				p.nextToken()
+				switch lit := p.curr.Literal; lit {
+				case kwUnix, kwGPS:
+					a.kind = p.curr
+				default:
+					return nil, p.unexpectedError()
+				}
+				p.nextToken()
+				if p.curr.Type != rparen {
+					return nil, p.unexpectedError()
+				}
+			}
 			p.nextToken()
 		default:
 			return nil, p.unexpectedError()

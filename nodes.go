@@ -447,8 +447,10 @@ func (p Parameter) is() Kind {
 		return kindString
 	case kwBytes:
 		return kindBytes
-	case kwTime:
-		return kindTime
+	case kwTime, kwUnix:
+		return kindUnix
+	case kwGPS:
+		return kindGPS
 	}
 }
 
