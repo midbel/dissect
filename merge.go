@@ -123,6 +123,9 @@ func mergeIf(i If, root Block) (Node, error) {
 	if i.csq != nil {
 		i.csq, err = mergeNode(i.csq, root)
 	}
+	if err != nil {
+		return nil, err
+	}
 	if i.alt != nil {
 		if i, ok := i.alt.(If); ok {
 			i.alt, err = mergeIf(i, root)
