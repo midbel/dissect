@@ -114,17 +114,6 @@ type Time struct {
 	Raw time.Time
 }
 
-func (t *Time) add(_ Value) (Value, error)        { return nil, ErrUnsupported }
-func (t *Time) subtract(_ Value) (Value, error)   { return nil, ErrUnsupported }
-func (t *Time) multiply(_ Value) (Value, error)   { return nil, ErrUnsupported }
-func (t *Time) divide(_ Value) (Value, error)     { return nil, ErrUnsupported }
-func (t *Time) modulo(_ Value) (Value, error)     { return nil, ErrUnsupported }
-func (t *Time) reverse() (Value, error)           { return nil, ErrUnsupported }
-func (t *Time) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
-func (t *Time) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
-func (t *Time) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
-func (t *Time) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
-
 func (t *Time) Cmp(v Value) int {
 	x, ok := v.(*Time)
 	if !ok {
@@ -138,6 +127,33 @@ func (t *Time) Cmp(v Value) int {
 	}
 	return 0
 }
+
+func (t *Time) add(v Value) (Value, error) {
+	if !isNumber(v) {
+		return nil, ErrIncompatible
+	}
+	x := *t
+	x.Raw = x.Raw.Add(time.Duration(asInt(v)))
+	return &x, nil
+}
+
+func (t *Time) subtract(v Value) (Value, error) {
+	if !isNumber(v) {
+		return nil, ErrIncompatible
+	}
+	x := *t
+	x.Raw = x.Raw.Add(time.Duration(-asInt(v)))
+	return &x, nil
+}
+
+func (t *Time) multiply(_ Value) (Value, error)   { return nil, ErrUnsupported }
+func (t *Time) divide(_ Value) (Value, error)     { return nil, ErrUnsupported }
+func (t *Time) modulo(_ Value) (Value, error)     { return nil, ErrUnsupported }
+func (t *Time) reverse() (Value, error)           { return nil, ErrUnsupported }
+func (t *Time) leftshift(_ Value) (Value, error)  { return nil, ErrUnsupported }
+func (t *Time) rightshift(_ Value) (Value, error) { return nil, ErrUnsupported }
+func (t *Time) and(_ Value) (Value, error)        { return nil, ErrUnsupported }
+func (t *Time) or(_ Value) (Value, error)         { return nil, ErrUnsupported }
 
 type Int struct {
 	Raw int64
@@ -596,6 +612,17 @@ func isCompatible(left, right Value) bool {
 		default:
 			return false
 		}
+	}
+	return true
+}
+
+func isNumber(v Value) bool {
+	switch v.(type) {
+	case *Int:
+	case *Uint:
+	case *Real:
+	default:
+		return false
 	}
 	return true
 }
