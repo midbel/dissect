@@ -611,7 +611,7 @@ func (root *state) decodeParameter(p Parameter) (Field, error) {
 		v, _ := strconv.ParseInt(p.size.Literal, 0, 64)
 		bits = int(v)
 	default:
-		return Field{}, fmt.Errorf("unexpected token type")
+		return Field{}, fmt.Errorf("parameter: unexpected token type: %s (%s)", TokenString(p.size), p.Pos())
 	}
 
 	var (
@@ -757,7 +757,7 @@ func (root *state) decodeExit(e Exit) error {
 		}
 		code = asInt(v.raw)
 	default:
-		return fmt.Errorf("unexpected token type")
+		return fmt.Errorf("exit: unexpected token type: %s (%s)", TokenString(e.code), e.Pos())
 	}
 	return &ExitError{code}
 }
